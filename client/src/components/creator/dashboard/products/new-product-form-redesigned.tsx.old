@@ -1,0 +1,1225 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiClient } from "@/lib/api/client";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import CodeEditor from "@/components/ui/code-editor";
+import DeliverablesManager, { ComponentDeliverable } from "@/components/ui/deliverables-manager";
+import GoogleImageSearch from "@/components/creator/dashboard/products/product-editor/google-image-search";
+import {
+  Package,
+  Code2,
+  FileCode,
+  Plus,
+  X,
+  Check,
+  Sparkles,
+  ArrowRight,
+  Layers,
+  Settings,
+  Eye,
+  Box,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  Upload,
+  Trash2,
+  Save,
+  Rocket,
+  Search,
+  Globe,
+} from "lucide-react";
+
+interface CodeFile {
+  filename: string;
+  content: string;
+  language: string;
+}
+
+const categories = [
+  { value: "notion-template", label: "Notion Template", icon: "📄" },
+  { value: "resume-template", label: "Resume Template", icon: "📋" },
+  { value: "ui-kit", label: "UI Kit", icon: "🎨" },
+  { value: "figma-assets", label: "Figma Assets", icon: "🎯" },
+  { value: "productivity-dashboard", label: "Productivity Dashboard", icon: "📊" },
+  { value: "ai-prompt-pack", label: "AI Prompt Pack", icon: "🤖" },
+  { value: "dev-boilerplate", label: "Developer Boilerplate", icon: "⚡" },
+  { value: "mern-starter", label: "MERN Starter", icon: "🚀" },
+  { value: "auth-system", label: "Auth System", icon: "🔐" },
+  { value: "saas-starter", label: "SaaS Starter", icon: "💼" },
+  { value: "api-scaffold", label: "API Scaffold", icon: "🔌" },
+  { value: "workflow-system", label: "Workflow System", icon: "⚙️" },
+  { value: "automation-pipeline", label: "Automation Pipeline", icon: "🔄" },
+  { value: "ai-productivity", label: "AI Productivity", icon: "🧠" },
+  { value: "business-guide", label: "Business Guide", icon: "📖" },
+  { value: "automation-guide", label: "Automation Guide", icon: "📚" },
+  { value: "productivity-framework", label: "Productivity Framework", icon: "📈" },
+  { value: "react-template", label: "React Template", icon: "⚛️" },
+  { value: "vue-template", label: "Vue Template", icon: "🟢" },
+  { value: "angular-template", label: "Angular Template", icon: "🔺" },
+  { value: "javascript-component", label: "JavaScript Component", icon: "📜" },
+  { value: "typescript-component", label: "TypeScript Component", icon: "📘" },
+  { value: "css-template", label: "CSS Template", icon: "🎨" },
+  { value: "html-template", label: "HTML Template", icon: "🏗️" },
+];
+
+const frameworks = [
+  { value: "react", label: "React", color: "#61DAFB" },
+  { value: "vue", label: "Vue", color: "#4FC08D" },
+  { value: "angular", label: "Angular", color: "#DD0031" },
+  { value: "javascript", label: "JavaScript", color: "#F7DF1E" },
+  { value: "typescript", label: "TypeScript", color: "#3178C6" },
+  { value: "css", label: "CSS", color: "#264DE4" },
+  { value: "html", label: "HTML", color: "#E34F26" },
+];
+
+const languages = [
+  { value: "javascript", label: "JavaScript" },
+  { value: "typescript", label: "TypeScript" },
+  { value: "html", label: "HTML" },
+  { value: "css", label: "CSS" },
+  { value: "jsx", label: "JSX" },
+  { value: "tsx", label: "TSX" },
+  { value: "vue", label: "Vue" },
+  { value: "scss", label: "SCSS" },
+];
+
+const componentTypes = [
+  { value: "component", label: "Component" },
+  { value: "page", label: "Page" },
+  { value: "hook", label: "Hook" },
+  { value: "utility", label: "Utility" },
+  { value: "template", label: "Template" },
+  { value: "layout", label: "Layout" },
+];
+
+export default function NewProductFormRedesigned({ formId }: { formId: string }) {
+  const router = useRouter();
+  
+  // Basic product info
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
+  const [price, setPrice] = useState<number>(0);
+  const [description, setDescription] = useState("");
+  const [installInstructions, setInstallInstructions] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [currentTab, setCurrentTab] = useState("details");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  
+  // Images
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [previewImages, setPreviewImages] = useState<File[]>([]);
+  const [previewImagePreviews, setPreviewImagePreviews] = useState<string[]>([]);
+  const coverImageRef = useRef<HTMLInputElement>(null);
+  const previewImagesRef = useRef<HTMLInputElement>(null);
+  
+  // Preview images from Google Search and web scraping
+  const [searchImages, setSearchImages] = useState<Array<{ url: string; title: string; source: string }>>([]);
+  
+  // Import/Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [scrapeQuery, setScrapeQuery] = useState("");
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [scrapeResults, setScrapeResults] = useState<any[]>([]);
+  const [scrapedData, setScrapedData] = useState<any>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  
+  // Deliverables (link/file/code type)
+  const [fileDeliverables, setFileDeliverables] = useState<Array<{ label: string; url: string; kind: "link" | "file" | "code" }>>([]);
+  
+  // Component Deliverables (from code editor)
+  const [componentDeliverables, setComponentDeliverables] = useState<ComponentDeliverable[]>([]);
+  
+  // Code template specific
+  const [framework, setFramework] = useState("react");
+  const [language, setLanguage] = useState("typescript");
+  const [componentType, setComponentType] = useState("component");
+  const [dependencies, setDependencies] = useState<string[]>([]);
+  const [dependencyInput, setDependencyInput] = useState("");
+  const [codeFiles, setCodeFiles] = useState<CodeFile[]>([]);
+  const [activeCodeFile, setActiveCodeFile] = useState(0);
+  const [hasLivePreview, setHasLivePreview] = useState(true);
+  const [sandboxEnabled, setSandboxEnabled] = useState(true);
+
+  const isCodeTemplate = category?.includes("-template") || category?.includes("-component");
+  const selectedCategory = categories.find(c => c.value === category);
+
+  const addDependency = () => {
+    if (dependencyInput.trim() && !dependencies.includes(dependencyInput.trim())) {
+      setDependencies([...dependencies, dependencyInput.trim()]);
+      setDependencyInput("");
+    }
+  };
+
+  const removeDependency = (index: number) => {
+    setDependencies(dependencies.filter((_, i) => i !== index));
+  };
+
+  const addCodeFile = () => {
+    const newFile: CodeFile = {
+      filename: `component.${language === 'typescript' ? 'tsx' : language === 'javascript' ? 'js' : language}`,
+      content: `// ${language} component\n\nexport default function Component() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}`,
+      language: language
+    };
+    setCodeFiles([...codeFiles, newFile]);
+    setActiveCodeFile(codeFiles.length);
+  };
+
+  const removeCodeFile = (index: number) => {
+    setCodeFiles(codeFiles.filter((_, i) => i !== index));
+    if (activeCodeFile >= codeFiles.length - 1) {
+      setActiveCodeFile(Math.max(0, codeFiles.length - 2));
+    }
+  };
+
+  const updateCodeFile = (index: number, field: 'filename' | 'content', value: string) => {
+    const updatedFiles = [...codeFiles];
+    updatedFiles[index] = { ...updatedFiles[index], [field]: value };
+    setCodeFiles(updatedFiles);
+  };
+
+  const handleAddToDeliverables = (component: ComponentDeliverable) => {
+    setComponentDeliverables(prev => [...prev, component]);
+  };
+
+  const handleDeliverablesChange = (updatedDeliverables: ComponentDeliverable[]) => {
+    setComponentDeliverables(updatedDeliverables);
+  };
+
+  // Image handling functions
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCoverImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePreviewImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setPreviewImages(prev => [...prev, ...files]);
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreviewImagePreviews(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removePreviewImage = (index: number) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+    setPreviewImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // File deliverables functions
+  const addFileDeliverable = () => {
+    setFileDeliverables(prev => [...prev, { label: "", url: "", kind: "link" }]);
+  };
+
+  const updateFileDeliverable = (index: number, field: string, value: string) => {
+    setFileDeliverables(prev => prev.map((d, i) => i === index ? { ...d, [field]: value } : d));
+  };
+
+  const removeFileDeliverable = (index: number) => {
+    setFileDeliverables(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFileUpload = async (index: number, file: File) => {
+    // For now, we'll create a blob URL. In production, you'd upload to a server
+    const url = URL.createObjectURL(file);
+    updateFileDeliverable(index, 'url', url);
+  };
+
+  // Submit handlers
+  const saveDraft = async () => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('price', price.toString());
+      formData.append('category', category);
+      formData.append('description', description || `A high-quality ${category?.replace('-', ' ')} for creators and professionals.`);
+      formData.append('visibility', 'draft');
+      
+      if (installInstructions) formData.append('installInstructions', installInstructions);
+      if (codeFiles.length > 0) {
+        formData.append('codeFiles', JSON.stringify(codeFiles));
+        formData.append('framework', framework);
+        formData.append('language', language);
+        formData.append('componentType', componentType);
+        formData.append('dependencies', JSON.stringify(dependencies));
+        formData.append('hasLivePreview', String(hasLivePreview));
+        formData.append('sandboxEnabled', String(sandboxEnabled));
+      }
+      if (fileDeliverables.length > 0) formData.append('deliverables', JSON.stringify(fileDeliverables));
+      if (componentDeliverables.length > 0) formData.append('componentDeliverables', JSON.stringify(componentDeliverables));
+      if (coverImage) formData.append('coverImage', coverImage);
+      if (previewImages.length > 0) {
+        previewImages.forEach(img => formData.append('previewImages', img));
+      }
+
+      const res = await apiClient.post("/api/creator/products", formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (res?.data?.ok) {
+        router.push("/dashboard/products");
+        router.refresh();
+      } else {
+        alert(`Error: ${res?.data?.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err?.response?.data?.error || err?.message || 'Network error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const publish = async () => {
+    setLoading(true);
+    try {
+      // First create the product
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('price', price.toString());
+      formData.append('category', category);
+      formData.append('description', description || `A high-quality ${category?.replace('-', ' ')} for creators and professionals.`);
+      formData.append('visibility', 'draft'); // Create as draft first
+      
+      if (installInstructions) formData.append('installInstructions', installInstructions);
+      if (codeFiles.length > 0) {
+        formData.append('codeFiles', JSON.stringify(codeFiles));
+        formData.append('framework', framework);
+        formData.append('language', language);
+        formData.append('componentType', componentType);
+        formData.append('dependencies', JSON.stringify(dependencies));
+        formData.append('hasLivePreview', String(hasLivePreview));
+        formData.append('sandboxEnabled', String(sandboxEnabled));
+      }
+      if (fileDeliverables.length > 0) formData.append('deliverables', JSON.stringify(fileDeliverables));
+      if (componentDeliverables.length > 0) formData.append('componentDeliverables', JSON.stringify(componentDeliverables));
+      if (coverImage) formData.append('coverImage', coverImage);
+      if (previewImages.length > 0) {
+        previewImages.forEach(img => formData.append('previewImages', img));
+      }
+
+      const createRes = await apiClient.post("/api/creator/products", formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (!createRes?.data?.ok) {
+        alert(`Error: ${createRes?.data?.error || 'Failed to create product'}`);
+        return;
+      }
+
+      // Then immediately publish
+      const productId = createRes.data.product._id;
+      const publishRes = await apiClient.patch(`/api/creator/products/${productId}/publish`);
+
+      if (publishRes?.data?.ok) {
+        router.push("/dashboard/products");
+        router.refresh();
+      } else {
+        alert(`Created but failed to publish: ${publishRes?.data?.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err?.response?.data?.error || err?.message || 'Network error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <form
+        id={formId}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32"
+      >
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-violet-200 to-pink-200 bg-clip-text text-transparent">
+                Create New Template
+              </h1>
+              <p className="text-neutral-400">Share your creativity with the world</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Progress Steps */}
+        <div className="flex items-center gap-4 mb-8 overflow-x-auto pb-2">
+          {[
+            { id: "details", label: "Details", icon: Package },
+            { id: "code", label: "Code", icon: Code2, show: isCodeTemplate },
+            { id: "deliverables", label: "Deliverables", icon: Box, show: isCodeTemplate },
+          ].filter(step => step.show !== false).map((step, index) => {
+            const Icon = step.icon;
+            const isActive = currentTab === step.id;
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setCurrentTab(step.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all whitespace-nowrap ${
+                  isActive
+                    ? "bg-gradient-to-r from-violet-500/20 to-pink-500/20 border border-violet-500/50 text-white"
+                    : "bg-neutral-900/50 border border-neutral-800 text-neutral-400 hover:text-white"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{step.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        <AnimatePresence mode="wait">
+          {currentTab === "details" && (
+            <motion.div
+              key="details"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Left Column - Basic Info */}
+                <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Package className="w-5 h-5 text-violet-400" />
+                      Basic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Template Name */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Template Name *</label>
+                      <Input
+                        placeholder="e.g., Premium React Dashboard"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={loading}
+                        className="h-12 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-violet-500 focus:ring-violet-500/20"
+                        required
+                      />
+                    </div>
+
+                    {/* Category Dropdown */}
+                    <div className="space-y-2 relative">
+                      <label className="text-sm font-medium text-neutral-300">Category *</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                        className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg flex items-center justify-between text-white hover:border-neutral-700 transition-colors"
+                      >
+                        <span className={selectedCategory ? "text-white" : "text-neutral-500"}>
+                          {selectedCategory ? `${selectedCategory.icon} ${selectedCategory.label}` : "Select a category"}
+                        </span>
+                        <ChevronDown className={`w-5 h-5 text-neutral-500 transition-transform ${showCategoryDropdown ? "rotate-180" : ""}`} />
+                      </button>
+                      
+                      {showCategoryDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-neutral-950 border border-neutral-800 rounded-lg z-50">
+                          {categories.map((cat) => (
+                            <button
+                              key={cat.value}
+                              type="button"
+                              onClick={() => {
+                                setCategory(cat.value);
+                                setShowCategoryDropdown(false);
+                              }}
+                              className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-900 transition-colors ${
+                                category === cat.value ? "bg-violet-500/10 text-violet-400" : "text-neutral-300"
+                              }`}
+                            >
+                              <span>{cat.icon}</span>
+                              <span>{cat.label}</span>
+                              {category === cat.value && <Check className="w-4 h-4 ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Price (₹) *</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">₹</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={price}
+                          onChange={(e) => setPrice(Number(e.target.value))}
+                          disabled={loading}
+                          className="h-12 pl-8 bg-neutral-950 border-neutral-800 text-white focus:border-violet-500 focus:ring-violet-500/20"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Right Column - Description */}
+                <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileCode className="w-5 h-5 text-pink-400" />
+                      Description
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">
+                        Tell buyers about your template
+                      </label>
+                      <Textarea
+                        placeholder="Describe what your template does, its features, and why people should buy it..."
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        disabled={loading}
+                        className="min-h-[200px] bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-violet-500 focus:ring-violet-500/20 resize-none"
+                      />
+                      <p className="text-xs text-neutral-500">
+                        {description.length}/500 characters
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Code Template Preview Card */}
+              {isCodeTemplate && (
+                <Card className="bg-gradient-to-r from-violet-500/10 to-pink-500/10 border-violet-500/30">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+                        <Code2 className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-white">Code Template Detected</h3>
+                        <p className="text-neutral-400">
+                          You&apos;ve selected a code template category. Switch to the Code tab to add your files.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentTab("code")}
+                        className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+                      >
+                        Add Code
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Images Section - Left: Cover/Preview, Right: Google Image Search */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Left Column - Cover & Preview Images */}
+                <div className="space-y-6">
+                  {/* Cover Image */}
+                  <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <ImageIcon className="w-5 h-5 text-violet-400" />
+                        Cover Image
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <input
+                        type="file"
+                        ref={coverImageRef}
+                        onChange={handleCoverImageChange}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      {coverImagePreview ? (
+                        <div className="relative">
+                          <img
+                            src={coverImagePreview}
+                            alt="Cover preview"
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              setCoverImage(null);
+                              setCoverImagePreview(null);
+                            }}
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => coverImageRef.current?.click()}
+                          className="w-full h-48 border-2 border-dashed border-neutral-700 rounded-lg flex flex-col items-center justify-center gap-3 hover:border-violet-500/50 hover:bg-neutral-800/50 transition-all"
+                        >
+                          <Upload className="w-8 h-8 text-neutral-500" />
+                          <span className="text-neutral-400">Click to upload cover image</span>
+                          <span className="text-xs text-neutral-500">Recommended: 1200x800px</span>
+                        </button>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Preview Images */}
+                  <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <ImageIcon className="w-5 h-5 text-pink-400" />
+                        Preview Images
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <input
+                        type="file"
+                        ref={previewImagesRef}
+                        onChange={handlePreviewImagesChange}
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                      />
+                      <div className="space-y-4">
+                        {previewImagePreviews.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2">
+                            {previewImagePreviews.map((preview, index) => (
+                              <div key={index} className="relative aspect-square">
+                                <img
+                                  src={preview}
+                                  alt={`Preview ${index + 1}`}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                                <Button
+                                  type="button"
+                                  onClick={() => removePreviewImage(index)}
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-6 w-6 p-0"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => previewImagesRef.current?.click()}
+                          className="w-full h-24 border-2 border-dashed border-neutral-700 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-pink-500/50 hover:bg-neutral-800/50 transition-all"
+                        >
+                          <Plus className="w-6 h-6 text-neutral-500" />
+                          <span className="text-sm text-neutral-400">Add preview images</span>
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right Column - Google Image Search */}
+                <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white h-fit">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Search className="w-5 h-5 text-blue-400" />
+                      Google Image Search
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-neutral-400">
+                      Search Google Images and import them to your template (requires template to be created first)
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Search for images..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1 h-12 bg-neutral-950 border-neutral-800 text-white"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => alert("Google Image Search will be available after creating the template. Save as draft first!")}
+                        className="h-12 px-6 bg-blue-500 hover:bg-blue-600"
+                      >
+                        Search
+                      </Button>
+                    </div>
+                    <div className="p-4 bg-neutral-950 rounded-lg border border-neutral-800">
+                      <p className="text-sm text-neutral-500 text-center">
+                        🔧 Google Image Search requires an existing product ID
+                      </p>
+                      <p className="text-xs text-neutral-600 mt-1 text-center">
+                        Save your template as draft, then use full import features
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* File Deliverables Section */}
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Box className="w-5 h-5 text-violet-400" />
+                    Deliverables (Links & Files)
+                  </CardTitle>
+                  <Button
+                    type="button"
+                    onClick={addFileDeliverable}
+                    className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Deliverable
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {fileDeliverables.length === 0 ? (
+                    <div className="text-center py-8 border-2 border-dashed border-neutral-800 rounded-xl">
+                      <Box className="w-12 h-12 mx-auto mb-3 text-neutral-600" />
+                      <p className="text-neutral-400 mb-2">No deliverables added yet</p>
+                      <p className="text-sm text-neutral-500">Add links, files, or code snippets that buyers will receive</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {fileDeliverables.map((deliverable, index) => (
+                        <div key={index} className="grid gap-3 p-4 bg-neutral-950 rounded-lg border border-neutral-800">
+                          <div className="flex items-center gap-3">
+                            <Input
+                              placeholder="Label (e.g., Notion link, ZIP file)"
+                              value={deliverable.label}
+                              onChange={(e) => updateFileDeliverable(index, 'label', e.target.value)}
+                              className="flex-1 h-10 bg-neutral-900 border-neutral-800 text-white"
+                            />
+                            <select
+                              value={deliverable.kind}
+                              onChange={(e) => updateFileDeliverable(index, 'kind', e.target.value)}
+                              className="h-10 px-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white"
+                            >
+                              <option value="link">Link</option>
+                              <option value="file">File</option>
+                              <option value="code">Code</option>
+                            </select>
+                            <Button
+                              type="button"
+                              onClick={() => removeFileDeliverable(index)}
+                              variant="destructive"
+                              size="sm"
+                              className="h-10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {deliverable.kind === 'file' ? (
+                            <input
+                              type="file"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileUpload(index, file);
+                              }}
+                              className="block w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-500 file:text-white hover:file:bg-violet-600"
+                            />
+                          ) : (
+                            <Input
+                              placeholder={deliverable.kind === 'link' ? "https://..." : "Paste code or URL..."}
+                              value={deliverable.url}
+                              onChange={(e) => updateFileDeliverable(index, 'url', e.target.value)}
+                              className="h-10 bg-neutral-900 border-neutral-800 text-white"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {currentTab === "code" && isCodeTemplate && (
+            <motion.div
+              key="code"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              {/* Code Settings */}
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2 text-white">
+                    <Settings className="w-5 h-5 text-violet-400" />
+                    Code Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Framework</label>
+                      <select
+                        value={framework}
+                        onChange={(e) => setFramework(e.target.value)}
+                        className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:border-violet-500"
+                      >
+                        {frameworks.map((f) => (
+                          <option key={f.value} value={f.value}>{f.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Language</label>
+                      <select
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                        className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:border-violet-500"
+                      >
+                        {languages.map((l) => (
+                          <option key={l.value} value={l.value}>{l.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Component Type</label>
+                      <select
+                        value={componentType}
+                        onChange={(e) => setComponentType(e.target.value)}
+                        className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:border-violet-500"
+                      >
+                        {componentTypes.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 cursor-pointer hover:border-neutral-700 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={hasLivePreview}
+                        onChange={(e) => setHasLivePreview(e.target.checked)}
+                        className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-violet-500 focus:ring-violet-500/20"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-neutral-400" />
+                        <span className="text-sm text-neutral-300">Live Preview</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 cursor-pointer hover:border-neutral-700 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={sandboxEnabled}
+                        onChange={(e) => setSandboxEnabled(e.target.checked)}
+                        className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-violet-500 focus:ring-violet-500/20"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-neutral-400" />
+                        <span className="text-sm text-neutral-300">Sandbox Mode</span>
+                      </div>
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Dependencies */}
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                <CardHeader className="text-white">
+                  <CardTitle className="text-lg">Dependencies</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2 mb-4">
+                    <Input
+                      placeholder="Add dependency (e.g., react, lodash)"
+                      value={dependencyInput}
+                      onChange={(e) => setDependencyInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addDependency();
+                        }
+                      }}
+                      className="flex-1 h-12 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600"
+                    />
+                    <Button
+                      type="button"
+                      onClick={addDependency}
+                      disabled={!dependencyInput.trim()}
+                      className="h-12 px-6 bg-violet-500 hover:bg-violet-600 disabled:opacity-50"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </Button>
+                  </div>
+
+                  {dependencies.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {dependencies.map((dep, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="px-3 py-2 bg-neutral-800 text-neutral-200 hover:bg-neutral-700 cursor-pointer"
+                          onClick={() => removeDependency(index)}
+                        >
+                          {dep}
+                          <X className="w-3 h-3 ml-2" />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Code Files */}
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg text-white">Code Files</CardTitle>
+                  <Button
+                    type="button"
+                    onClick={addCodeFile}
+                    className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add File
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {codeFiles.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-neutral-800 rounded-xl">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-neutral-800 flex items-center justify-center">
+                        <FileCode className="w-8 h-8 text-neutral-500" />
+                      </div>
+                      <p className="text-neutral-400 mb-4">No code files yet</p>
+                      <Button
+                        type="button"
+                        onClick={addCodeFile}
+                        variant="outline"
+                        className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+                      >
+                        Add Your First File
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* File Tabs */}
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {codeFiles.map((file, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setActiveCodeFile(index)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                              activeCodeFile === index
+                                ? "bg-violet-500/20 text-violet-400 border border-violet-500/50"
+                                : "bg-neutral-800 text-neutral-400 hover:text-white"
+                            }`}
+                          >
+                            {file.filename}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Active File Editor */}
+                      <AnimatePresence mode="wait">
+                        {codeFiles.map((file, index) => (
+                          activeCodeFile === index && (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                            >
+                              <div className="flex items-center gap-2 mb-3">
+                                <Input
+                                  value={file.filename}
+                                  onChange={(e) => updateCodeFile(index, 'filename', e.target.value)}
+                                  placeholder="Filename"
+                                  className="flex-1 h-10 bg-neutral-950 border-neutral-800 text-white"
+                                />
+                                <Button
+                                  type="button"
+                                  onClick={() => removeCodeFile(index)}
+                                  variant="destructive"
+                                  size="sm"
+                                  className="h-10"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              <Textarea
+                                value={file.content}
+                                onChange={(e) => updateCodeFile(index, 'content', e.target.value)}
+                                placeholder={`Write your ${language} code here...`}
+                                className="min-h-[300px] font-mono text-sm bg-neutral-950 border-neutral-800 text-white resize-none"
+                              />
+                            </motion.div>
+                          )
+                        ))}
+                      </AnimatePresence>
+
+                      {/* Live Preview */}
+                      {codeFiles.length > 0 && hasLivePreview && (
+                        <div className="mt-6">
+                          <h4 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            Live Preview
+                          </h4>
+                          <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950">
+                            <CodeEditor
+                              template={{
+                                framework,
+                                language,
+                                componentType,
+                                dependencies,
+                                hasLivePreview,
+                                sandboxEnabled,
+                                codeFiles
+                              }}
+                              onAddToDeliverables={handleAddToDeliverables}
+                              showAddToDeliverables={true}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {currentTab === "deliverables" && isCodeTemplate && (
+            <motion.div
+              key="deliverables"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Box className="w-5 h-5 text-violet-400" />
+                    Deliverables
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DeliverablesManager
+                    deliverables={componentDeliverables}
+                    onDeliverablesChange={handleDeliverablesChange}
+                    readOnly={false}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {currentTab === "import" && (
+            <motion.div
+              key="import"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              {/* Google Image Search */}
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Search className="w-5 h-5 text-violet-400" />
+                    Google Image Search
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-neutral-400">
+                    Search for images using Google Search API and add them as preview images
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Search for images (e.g., dashboard ui design)..."
+                      className="flex-1 h-12 bg-neutral-950 border-neutral-800 text-white"
+                      disabled
+                    />
+                    <Button
+                      type="button"
+                      disabled
+                      className="h-12 px-6 bg-blue-500 hover:bg-blue-600 disabled:opacity-50"
+                    >
+                      Search
+                    </Button>
+                  </div>
+                  <div className="p-4 bg-neutral-950 rounded-lg border border-neutral-800 text-center">
+                    <p className="text-sm text-neutral-500">
+                      🔧 Google Image Search will be available after creating the template
+                    </p>
+                    <p className="text-xs text-neutral-600 mt-1">
+                      This feature requires an existing product ID to import images
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Web Scraping / Firecrawl */}
+              <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-pink-400" />
+                    Web Scraping (Firecrawl)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Search Mode */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-neutral-300">
+                      Search & Import Content
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Search query (e.g., pricing table examples)..."
+                        value={scrapeQuery}
+                        onChange={(e) => setScrapeQuery(e.target.value)}
+                        className="flex-1 h-12 bg-neutral-950 border-neutral-800 text-white"
+                      />
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          if (!scrapeQuery.trim()) return;
+                          setImportLoading(true);
+                          try {
+                            // This will search after product is created
+                            alert("Search results will be available after creating the template. Save as draft first!");
+                          } finally {
+                            setImportLoading(false);
+                          }
+                        }}
+                        disabled={importLoading || !scrapeQuery.trim()}
+                        className="h-12 px-6 bg-pink-500 hover:bg-pink-600 disabled:opacity-50"
+                      >
+                        {importLoading ? "Searching..." : "Search"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-neutral-500">
+                      Search for content and import it into your template description
+                    </p>
+                  </div>
+
+                  {/* Scrape Mode */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-neutral-300">
+                      Scrape Single URL
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://example.com/page-to-scrape"
+                        value={scrapeUrl}
+                        onChange={(e) => setScrapeUrl(e.target.value)}
+                        className="flex-1 h-12 bg-neutral-950 border-neutral-800 text-white"
+                      />
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          if (!scrapeUrl.trim()) return;
+                          setImportLoading(true);
+                          try {
+                            // For now, just show that this will work after creation
+                            alert("URL scraping will be available after creating the template. Save as draft first!");
+                          } finally {
+                            setImportLoading(false);
+                          }
+                        }}
+                        disabled={importLoading || !scrapeUrl.trim()}
+                        className="h-12 px-6 bg-violet-500 hover:bg-violet-600 disabled:opacity-50"
+                      >
+                        {importLoading ? "Scraping..." : "Scrape"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-neutral-500">
+                      Extract content from a specific URL to use in your template
+                    </p>
+                  </div>
+
+                  {/* Info Note */}
+                  <div className="p-4 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                    <p className="text-sm text-violet-300">
+                      <strong>Note:</strong> Web scraping features require the template to be created first. 
+                      Save your template as a draft, then you can use the full import features in the editor.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Submit Buttons */}
+        <div className="flex justify-center gap-4 mt-12">
+          <Button
+            type="button"
+            onClick={saveDraft}
+            disabled={loading || !title || !category}
+            variant="outline"
+            className="h-14 px-8 text-lg border-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                Save as Draft
+              </>
+            )}
+          </Button>
+          
+          <Button
+            type="button"
+            onClick={publish}
+            disabled={loading || !title || !category || (!isCodeTemplate && fileDeliverables.length === 0)}
+            className="h-14 px-12 text-lg bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Rocket className="w-5 h-5 mr-2" />
+                Publish Template
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -1,0 +1,705 @@
+"use client";
+
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiClient } from "@/lib/api/client";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import CodeEditor from "@/components/ui/code-editor";
+import DeliverablesManager, { ComponentDeliverable } from "@/components/ui/deliverables-manager";
+import {
+  Package,
+  Code2,
+  FileCode,
+  Plus,
+  X,
+  Check,
+  Sparkles,
+  ArrowRight,
+  Layers,
+  Settings,
+  Eye,
+  Box,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+
+interface CodeFile {
+  filename: string;
+  content: string;
+  language: string;
+}
+
+const categories = [
+  { value: "notion-template", label: "Notion Template", icon: "📄" },
+  { value: "resume-template", label: "Resume Template", icon: "📋" },
+  { value: "ui-kit", label: "UI Kit", icon: "🎨" },
+  { value: "figma-assets", label: "Figma Assets", icon: "🎯" },
+  { value: "productivity-dashboard", label: "Productivity Dashboard", icon: "📊" },
+  { value: "ai-prompt-pack", label: "AI Prompt Pack", icon: "🤖" },
+  { value: "dev-boilerplate", label: "Developer Boilerplate", icon: "⚡" },
+  { value: "mern-starter", label: "MERN Starter", icon: "🚀" },
+  { value: "auth-system", label: "Auth System", icon: "🔐" },
+  { value: "saas-starter", label: "SaaS Starter", icon: "💼" },
+  { value: "api-scaffold", label: "API Scaffold", icon: "🔌" },
+  { value: "workflow-system", label: "Workflow System", icon: "⚙️" },
+  { value: "automation-pipeline", label: "Automation Pipeline", icon: "🔄" },
+  { value: "ai-productivity", label: "AI Productivity", icon: "🧠" },
+  { value: "business-guide", label: "Business Guide", icon: "📖" },
+  { value: "automation-guide", label: "Automation Guide", icon: "📚" },
+  { value: "productivity-framework", label: "Productivity Framework", icon: "📈" },
+  { value: "react-template", label: "React Template", icon: "⚛️" },
+  { value: "vue-template", label: "Vue Template", icon: "🟢" },
+  { value: "angular-template", label: "Angular Template", icon: "🔺" },
+  { value: "javascript-component", label: "JavaScript Component", icon: "📜" },
+  { value: "typescript-component", label: "TypeScript Component", icon: "📘" },
+  { value: "css-template", label: "CSS Template", icon: "🎨" },
+  { value: "html-template", label: "HTML Template", icon: "🏗️" },
+];
+
+const frameworks = [
+  { value: "react", label: "React", color: "#61DAFB" },
+  { value: "vue", label: "Vue", color: "#4FC08D" },
+  { value: "angular", label: "Angular", color: "#DD0031" },
+  { value: "javascript", label: "JavaScript", color: "#F7DF1E" },
+  { value: "typescript", label: "TypeScript", color: "#3178C6" },
+  { value: "css", label: "CSS", color: "#264DE4" },
+  { value: "html", label: "HTML", color: "#E34F26" },
+];
+
+const languages = [
+  { value: "javascript", label: "JavaScript" },
+  { value: "typescript", label: "TypeScript" },
+  { value: "html", label: "HTML" },
+  { value: "css", label: "CSS" },
+  { value: "jsx", label: "JSX" },
+  { value: "tsx", label: "TSX" },
+  { value: "vue", label: "Vue" },
+  { value: "scss", label: "SCSS" },
+];
+
+const componentTypes = [
+  { value: "component", label: "Component" },
+  { value: "page", label: "Page" },
+  { value: "hook", label: "Hook" },
+  { value: "utility", label: "Utility" },
+  { value: "template", label: "Template" },
+  { value: "layout", label: "Layout" },
+];
+
+export default function NewProductFormRedesigned({ formId }: { formId: string }) {
+  const router = useRouter();
+  
+  // Basic product info
+  const [title, setTitle] = useState("");
+  const [price, setPrice] = useState(100);
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [currentTab, setCurrentTab] = useState("details");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  
+  // Deliverables
+  const [deliverables, setDeliverables] = useState<ComponentDeliverable[]>([]);
+  
+  // Code template specific
+  const [framework, setFramework] = useState("react");
+  const [language, setLanguage] = useState("typescript");
+  const [componentType, setComponentType] = useState("component");
+  const [dependencies, setDependencies] = useState<string[]>([]);
+  const [dependencyInput, setDependencyInput] = useState("");
+  const [codeFiles, setCodeFiles] = useState<CodeFile[]>([]);
+  const [activeCodeFile, setActiveCodeFile] = useState(0);
+  const [hasLivePreview, setHasLivePreview] = useState(true);
+  const [sandboxEnabled, setSandboxEnabled] = useState(true);
+
+  const isCodeTemplate = category?.includes("-template") || category?.includes("-component");
+  const selectedCategory = categories.find(c => c.value === category);
+
+  const addDependency = () => {
+    if (dependencyInput.trim() && !dependencies.includes(dependencyInput.trim())) {
+      setDependencies([...dependencies, dependencyInput.trim()]);
+      setDependencyInput("");
+    }
+  };
+
+  const removeDependency = (index: number) => {
+    setDependencies(dependencies.filter((_, i) => i !== index));
+  };
+
+  const addCodeFile = () => {
+    const newFile: CodeFile = {
+      filename: `component.${language === 'typescript' ? 'tsx' : language === 'javascript' ? 'js' : language}`,
+      content: `// ${language} component\n\nexport default function Component() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}`,
+      language: language
+    };
+    setCodeFiles([...codeFiles, newFile]);
+    setActiveCodeFile(codeFiles.length);
+  };
+
+  const removeCodeFile = (index: number) => {
+    setCodeFiles(codeFiles.filter((_, i) => i !== index));
+    if (activeCodeFile >= codeFiles.length - 1) {
+      setActiveCodeFile(Math.max(0, codeFiles.length - 2));
+    }
+  };
+
+  const updateCodeFile = (index: number, field: 'filename' | 'content', value: string) => {
+    const updatedFiles = [...codeFiles];
+    updatedFiles[index] = { ...updatedFiles[index], [field]: value };
+    setCodeFiles(updatedFiles);
+  };
+
+  const handleAddToDeliverables = (component: ComponentDeliverable) => {
+    setDeliverables(prev => [...prev, component]);
+  };
+
+  const handleDeliverablesChange = (updatedDeliverables: ComponentDeliverable[]) => {
+    setDeliverables(updatedDeliverables);
+  };
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+
+    try {
+      const productData: any = {
+        title,
+        price,
+        category,
+        description: description || `A high-quality ${category?.replace('-', ' ')} for creators and professionals.`,
+        codeFiles: codeFiles.length > 0 ? codeFiles : undefined,
+        framework: codeFiles.length > 0 ? framework : undefined,
+        language: codeFiles.length > 0 ? language : undefined,
+        componentType: codeFiles.length > 0 ? componentType : undefined,
+        dependencies: codeFiles.length > 0 ? dependencies : undefined,
+        hasLivePreview: codeFiles.length > 0 ? hasLivePreview : undefined,
+        sandboxEnabled: codeFiles.length > 0 ? sandboxEnabled : undefined,
+        deliverables: deliverables.length > 0 ? deliverables : undefined
+      };
+
+      const res = await apiClient.post("/api/creator/products", productData);
+
+      if (res?.data?.ok) {
+        router.push("/dashboard/products");
+        router.refresh();
+      } else {
+        alert(`Error: ${res?.data?.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err?.response?.data?.error || err?.message || 'Network error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32"
+      >
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-violet-200 to-pink-200 bg-clip-text text-transparent">
+                Create New Template
+              </h1>
+              <p className="text-neutral-400">Share your creativity with the world</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* All Fields in Single Layout */}
+        <div className="space-y-6">
+          {/* Basic Info */}
+          <div className="grid lg:grid-cols-2 gap-6">
+                {/* Left Column - Basic Info */}
+                <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Package className="w-5 h-5 text-violet-400" />
+                      Basic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Template Name */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Template Name *</label>
+                      <Input
+                        placeholder="e.g., Premium React Dashboard"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={loading}
+                        className="h-12 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-violet-500 focus:ring-violet-500/20"
+                        required
+                      />
+                    </div>
+
+                    {/* Category Dropdown */}
+                    <div className="space-y-2 relative">
+                      <label className="text-sm font-medium text-neutral-300">Category *</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                        className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg flex items-center justify-between text-white hover:border-neutral-700 transition-colors"
+                      >
+                        <span className={selectedCategory ? "text-white" : "text-neutral-500"}>
+                          {selectedCategory ? `${selectedCategory.icon} ${selectedCategory.label}` : "Select a category"}
+                        </span>
+                        <ChevronDown className={`w-5 h-5 text-neutral-500 transition-transform ${showCategoryDropdown ? "rotate-180" : ""}`} />
+                      </button>
+                      
+                      {showCategoryDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-neutral-950 border border-neutral-800 rounded-lg z-50">
+                          {categories.map((cat) => (
+                            <button
+                              key={cat.value}
+                              type="button"
+                              onClick={() => {
+                                setCategory(cat.value);
+                                setShowCategoryDropdown(false);
+                              }}
+                              className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-900 transition-colors ${
+                                category === cat.value ? "bg-violet-500/10 text-violet-400" : "text-neutral-300"
+                              }`}
+                            >
+                              <span>{cat.icon}</span>
+                              <span>{cat.label}</span>
+                              {category === cat.value && <Check className="w-4 h-4 ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">Price (₹) *</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">₹</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={price}
+                          onChange={(e) => setPrice(Number(e.target.value))}
+                          disabled={loading}
+                          className="h-12 pl-8 bg-neutral-950 border-neutral-800 text-white focus:border-violet-500 focus:ring-violet-500/20"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Right Column - Description */}
+                <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileCode className="w-5 h-5 text-pink-400" />
+                      Description
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-neutral-300">
+                        Tell buyers about your template
+                      </label>
+                      <Textarea
+                        placeholder="Describe what your template does, its features, and why people should buy it..."
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        disabled={loading}
+                        className="min-h-[200px] bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-violet-500 focus:ring-violet-500/20 resize-none"
+                      />
+                      <p className="text-xs text-neutral-500">
+                        {description.length}/500 characters
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Code Template Preview Card */}
+              {isCodeTemplate && (
+                <Card className="bg-gradient-to-r from-violet-500/10 to-pink-500/10 border-violet-500/30">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+                        <Code2 className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-white">Code Template Detected</h3>
+                        <p className="text-neutral-400">
+                          You&apos;ve selected a code template category. Switch to the Code tab to add your files.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentTab("code")}
+                        className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+                      >
+                        Add Code
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Price */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-neutral-300">Price (₹) *</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">₹</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    disabled={loading}
+                    className="h-12 pl-8 bg-neutral-950 border-neutral-800 text-white focus:border-violet-500 focus:ring-violet-500/20"
+                    required
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Right Column - Description */}
+          <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm text-white">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileCode className="w-5 h-5 text-pink-400" />
+                Description
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-neutral-300">
+                  Tell buyers about your template
+                </label>
+                <Textarea
+                  placeholder="Describe what your template does, its features, and why people should buy it..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={loading}
+                  className="min-h-[200px] bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600 focus:border-violet-500 focus:ring-violet-500/20 resize-none"
+                />
+                <p className="text-xs text-neutral-500">
+                  {description.length}/500 characters
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Code Section - Only show for code templates */}
+        {isCodeTemplate && (
+          <div className="space-y-6 pt-6 border-t border-neutral-800">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <Code2 className="w-5 h-5 text-violet-400" />
+              Code Configuration
+            </h2>
+            {/* Code Settings */}
+            <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
+                  <Settings className="w-5 h-5 text-violet-400" />
+                  Code Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-neutral-300">Framework</label>
+                    <select
+                      value={framework}
+                      onChange={(e) => setFramework(e.target.value)}
+                      className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:border-violet-500"
+                    >
+                      {frameworks.map((f) => (
+                        <option key={f.value} value={f.value}>{f.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-neutral-300">Language</label>
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:border-violet-500"
+                    >
+                      {languages.map((l) => (
+                        <option key={l.value} value={l.value}>{l.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-neutral-300">Component Type</label>
+                    <select
+                      value={componentType}
+                      onChange={(e) => setComponentType(e.target.value)}
+                      className="w-full h-12 px-4 bg-neutral-950 border border-neutral-800 rounded-lg text-white focus:border-violet-500"
+                    >
+                      {componentTypes.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 cursor-pointer hover:border-neutral-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={hasLivePreview}
+                      onChange={(e) => setHasLivePreview(e.target.checked)}
+                      className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-violet-500 focus:ring-violet-500/20"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-neutral-400" />
+                      <span className="text-sm text-neutral-300">Live Preview</span>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 cursor-pointer hover:border-neutral-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={sandboxEnabled}
+                      onChange={(e) => setSandboxEnabled(e.target.checked)}
+                      className="w-5 h-5 rounded border-neutral-700 bg-neutral-800 text-violet-500 focus:ring-violet-500/20"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-neutral-400" />
+                      <span className="text-sm text-neutral-300">Sandbox Mode</span>
+                    </div>
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dependencies */}
+            <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+              <CardHeader className="text-white">
+                <CardTitle className="text-lg">Dependencies</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    placeholder="Add dependency (e.g., react, lodash)"
+                    value={dependencyInput}
+                    onChange={(e) => setDependencyInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addDependency();
+                      }
+                    }}
+                    className="flex-1 h-12 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-600"
+                  />
+                  <Button
+                    type="button"
+                    onClick={addDependency}
+                    disabled={!dependencyInput.trim()}
+                    className="h-12 px-6 bg-violet-500 hover:bg-violet-600 disabled:opacity-50"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {dependencies.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {dependencies.map((dep, index) => (
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="px-3 py-2 bg-neutral-800 text-neutral-200 hover:bg-neutral-700 cursor-pointer"
+                        onClick={() => removeDependency(index)}
+                      >
+                        {dep}
+                        <X className="w-3 h-3 ml-2" />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Code Files */}
+            <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg text-white">Code Files</CardTitle>
+                <Button
+                  type="button"
+                  onClick={addCodeFile}
+                  className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add File
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {codeFiles.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-neutral-800 rounded-xl">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-neutral-800 flex items-center justify-center">
+                      <FileCode className="w-8 h-8 text-neutral-500" />
+                    </div>
+                    <p className="text-neutral-400 mb-4">No code files yet</p>
+                    <Button
+                      type="button"
+                      onClick={addCodeFile}
+                      variant="outline"
+                      className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+                    >
+                      Add Your First File
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* File Tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {codeFiles.map((file, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setActiveCodeFile(index)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                            activeCodeFile === index
+                              ? "bg-violet-500/20 text-violet-400 border border-violet-500/50"
+                              : "bg-neutral-800 text-neutral-400 hover:text-white"
+                          }`}
+                        >
+                          {file.filename}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active File Editor */}
+                    <AnimatePresence mode="wait">
+                      {codeFiles.map((file, index) => (
+                        activeCodeFile === index && (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                          >
+                            <div className="flex items-center gap-2 mb-3">
+                              <Input
+                                value={file.filename}
+                                onChange={(e) => updateCodeFile(index, 'filename', e.target.value)}
+                                placeholder="Filename"
+                                className="flex-1 h-10 bg-neutral-950 border-neutral-800 text-white"
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => removeCodeFile(index)}
+                                variant="destructive"
+                                size="sm"
+                                className="h-10"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <Textarea
+                              value={file.content}
+                              onChange={(e) => updateCodeFile(index, 'content', e.target.value)}
+                              placeholder={`Write your ${language} code here...`}
+                              className="min-h-[300px] font-mono text-sm bg-neutral-950 border-neutral-800 text-white resize-none"
+                            />
+                          </motion.div>
+                        )
+                      ))}
+                    </AnimatePresence>
+
+                    {/* Live Preview */}
+                    {codeFiles.length > 0 && hasLivePreview && (
+                      <div className="mt-6">
+                        <h4 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+                          <Eye className="w-4 h-4" />
+                          Live Preview
+                        </h4>
+                        <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950">
+                          <CodeEditor
+                            template={{
+                              framework,
+                              language,
+                              componentType,
+                              dependencies,
+                              hasLivePreview,
+                              sandboxEnabled,
+                              codeFiles
+                            }}
+                            onAddToDeliverables={handleAddToDeliverables}
+                            showAddToDeliverables={true}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Deliverables Section - Only show for code templates */}
+        {isCodeTemplate && (
+          <div className="pt-6 border-t border-neutral-800">
+            <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Box className="w-5 h-5 text-violet-400" />
+                  Deliverables
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DeliverablesManager
+                  deliverables={deliverables}
+                  onDeliverablesChange={handleDeliverablesChange}
+                  readOnly={false}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Submit Button */}
+      <div className="flex justify-center mt-12">
+        <Button
+          type="submit"
+          disabled={loading || !title || !category}
+          className="h-14 px-12 text-lg bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5 mr-2" />
+              Create Template
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  </div>
+);
