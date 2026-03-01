@@ -86,6 +86,13 @@ exports.authRouter.post("/login", async (req, res) => {
                 error: "Invalid credentials",
             });
         }
+        console.log("=== LOGIN DEBUG ===");
+        console.log("Request origin:", req.headers.origin);
+        console.log("Request headers:", req.headers);
+        console.log("Environment variables:");
+        console.log("- COOKIE_NAME:", process.env.COOKIE_NAME);
+        console.log("- JWT_SECRET:", process.env.JWT_SECRET ? "SET" : "NOT SET");
+        console.log("- JWT_EXPIRES_IN:", process.env.JWT_EXPIRES_IN);
         const token = (0, auth_1.signJwt)({ userId: String(user._id) });
         console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
         console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
@@ -97,6 +104,7 @@ exports.authRouter.post("/login", async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
         console.log("Cookie set successfully");
+        console.log("=== END LOGIN DEBUG ===");
         return res.json({
             ok: true,
             user: {
