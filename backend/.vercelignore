@@ -1,0 +1,2 @@
+# Include dist folder for deployment
+!dist/
