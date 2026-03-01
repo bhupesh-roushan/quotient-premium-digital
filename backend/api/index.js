@@ -1,5 +1,6 @@
 require("dotenv/config");
 
+// API Handler for Vercel deployment - v2
 let cachedApp = null;
 let cachedConnection = false;
 
