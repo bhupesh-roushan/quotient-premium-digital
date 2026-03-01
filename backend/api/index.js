@@ -1,6 +1,6 @@
 require("dotenv/config");
 
-// API Handler for Vercel deployment - v4 (Cookie Domain Fixed)
+// API Handler for Vercel deployment - v5 (Cookie Domain Fixed) - 2025-03-02-00:18
 let cachedApp = null;
 let cachedConnection = false;
 
