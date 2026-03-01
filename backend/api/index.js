@@ -1,6 +1,6 @@
 require("dotenv/config");
 
-// API Handler for Vercel deployment - v3 (CORS Fixed)
+// API Handler for Vercel deployment - v4 (Cookie Domain Fixed)
 let cachedApp = null;
 let cachedConnection = false;
 
