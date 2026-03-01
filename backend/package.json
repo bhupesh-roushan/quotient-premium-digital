@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc --listFiles && echo 'Build completed' && ls -la dist/ || echo 'dist folder not found'",
     "start": "node dist/server.js"
   },
   "keywords": [],
