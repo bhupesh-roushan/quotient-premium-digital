@@ -18,5 +18,5 @@
   ],
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "buildTimestamp": "2025-03-02-00:19"
+  "framework": null
 }
