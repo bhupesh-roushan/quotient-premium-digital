@@ -2,10 +2,20 @@ import { Response, Request, NextFunction } from "express";
 import { verifyJwt } from "../lib/auth";
 import { User } from "../models/User";
 
+/**
+ * Extended Express Request that includes the authenticated user profile
+ * after requireAuth middleware has run successfully.
+ */
 export type AuthedRequest = Request & {
   user?: { id: string; name: string; email: string; photo?: string; isCreator: Boolean };
 };
 
+/**
+ * Express middleware that validates the JWT auth cookie on every protected request.
+ * Reads the cookie named by COOKIE_NAME env var, verifies the JWT, fetches the
+ * user from MongoDB, and attaches it to req.user before calling next().
+ * Returns 401 if the token is missing, invalid, or the user no longer exists.
+ */
 export async function requireAuth(
   req: AuthedRequest,
   res: Response,

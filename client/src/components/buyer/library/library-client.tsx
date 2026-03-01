@@ -25,6 +25,8 @@ import {
   ExternalLink,
   Star,
   MessageSquare,
+  Shield,
+  Hash,
 } from "lucide-react";
 
 type Deliverable = {
@@ -60,6 +62,7 @@ type AssetRes = {
   error?: string;
 };
 
+/** Formats an ISO date string into a readable Indian locale date (e.g. 01 Jan 2025). */
 function formatDate(input: string | null) {
   if (!input) return "-";
   return new Date(input).toLocaleDateString("en-IN", {
@@ -69,6 +72,15 @@ function formatDate(input: string | null) {
   });
 }
 
+/**
+ * Buyer library page component.
+ * Displays all of the user's purchased products in a grid. Clicking a product
+ * opens a slide-out drawer that shows deliverables (links, files, code), image
+ * assets, and install instructions. Also allows running AI prompts for prompt-
+ * pack products directly from the library.
+ *
+ * @param items - All paid library items fetched server-side via the library API
+ */
 function LibraryClient({ items }: { items: LibraryItem[] }) {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [assets, setAssets] = useState<AssetPreview[]>([]);
@@ -86,16 +98,14 @@ function LibraryClient({ items }: { items: LibraryItem[] }) {
   const [runningCode, setRunningCode] = useState(false);
 
   useEffect(() => {
-    // Filter deliverables to only show code and PDF files (not images)
     const filtered = deliverables.filter(d => {
+      if (d.kind === 'link') return true;
       if (d.kind === 'code') return true;
       if (d.kind === 'file') {
-        // Only include PDF files, not images
-        const isPdf = d.label.toLowerCase().endsWith('.pdf') || d.url.toLowerCase().includes('.pdf');
         const isImage = d.url.match(/\.(jpg|jpeg|png|webp|gif)$/i);
-        return isPdf && !isImage;
+        return !isImage;
       }
-      return false; // Exclude links (images)
+      return false;
     });
     setAllDeliverables(filtered);
   }, [deliverables]);
@@ -122,10 +132,23 @@ function LibraryClient({ items }: { items: LibraryItem[] }) {
         throw new Error("Failed to load deliverables");
       if (!assetsRes.data.ok) throw new Error("Failed to load assets");
 
-      setDeliverables(deliverablesRes.data.deliverables ?? []);
+      const loadedDeliverables = deliverablesRes.data.deliverables ?? [];
+      const loadedAssets = assetsRes.data.assets ?? [];
+      setDeliverables(loadedDeliverables);
       setInstallInstructions(deliverablesRes.data.installInstructions ?? "");
       setCodeTemplate(deliverablesRes.data.codeTemplate);
-      setAssets(assetsRes.data.assets ?? []);
+      setAssets(loadedAssets);
+
+      // Auto-select the most relevant tab
+      const hasLoadedLinks = loadedDeliverables.some(d => d.kind === 'link');
+      const hasLoadedFiles = loadedDeliverables.some(d => d.kind === 'file' || d.kind === 'code');
+      const hasLoadedAssets = loadedAssets.length > 0;
+      const hasLoadedCode = !!deliverablesRes.data.codeTemplate?.codeFiles?.length;
+      if (hasLoadedLinks) setActiveTab("links");
+      else if (hasLoadedFiles) setActiveTab("deliverables");
+      else if (hasLoadedCode) setActiveTab("code");
+      else if (hasLoadedAssets) setActiveTab("preview");
+      else setActiveTab("deliverables");
     } catch (e) {
       console.log(e);
     } finally {
@@ -293,14 +316,17 @@ root.render(<App />);`;
 
   const fileDeliverables = allDeliverables.filter(d => d.kind === 'file');
   const codeDeliverables = allDeliverables.filter(d => d.kind === 'code');
-  
+  const linkDeliverables = allDeliverables.filter(d => d.kind === 'link');
+
   const hasFiles = fileDeliverables.length > 0 || codeDeliverables.length > 0;
+  const hasLinks = linkDeliverables.length > 0;
   const hasCode = codeTemplate?.codeFiles?.length > 0 || deliverables.some(d => d.kind === 'code');
   const hasPreview = assets.length > 0;
   const hasInstructions = installInstructions.trim().length > 0;
 
   const tabs = [
     { id: 'preview', label: 'Preview', icon: ImageIcon, show: hasPreview },
+    { id: 'links', label: 'Access Links', icon: ExternalLink, show: hasLinks },
     { id: 'deliverables', label: 'Files', icon: FolderOpen, show: hasFiles },
     { id: 'code', label: 'Code', icon: FileCode, show: hasCode },
     { id: 'instructions', label: 'Instructions', icon: BookOpen, show: hasInstructions },
@@ -477,9 +503,36 @@ root.render(<App />);`;
                       </div>
                       <div>
                         <h2 className="text-2xl font-bold text-white">{active.title}</h2>
-                        <p className="text-neutral-400">
+                        <p className="text-neutral-400 text-sm mt-0.5">
                           Purchased on {formatDate(active.paidAt)}
                         </p>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {/* License badge */}
+                          {active.license && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-500/10 border border-violet-500/30 text-violet-400">
+                              <Shield className="w-3 h-3" />
+                              {active.license}
+                            </span>
+                          )}
+                          {/* Category badge */}
+                          {active.category && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-800/50 border border-neutral-700 text-neutral-400 capitalize">
+                              {active.category.replace(/-/g, " ")}
+                            </span>
+                          )}
+                          {/* Order ID */}
+                          {active.orderId && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-800/50 border border-neutral-700 text-neutral-500">
+                              <Hash className="w-3 h-3" />
+                              {active.orderId.slice(-8).toUpperCase()}
+                            </span>
+                          )}
+                          {/* Amount paid */}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                            <IndianRupee className="w-3 h-3" />
+                            {active.amount ?? active.price}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
@@ -487,7 +540,7 @@ root.render(<App />);`;
                     <Link
                       href={`/discover/${active.productId}#reviews`}
                       onClick={() => setActive(null)}
-                      className="flex items-center gap-2 px-4 py-2 bg-neutral-800/50 backdrop-blur-sm border border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50 text-yellow-400 rounded-xl font-medium transition-all"
+                      className="flex items-center gap-2 px-4 py-2 bg-neutral-800/50 backdrop-blur-sm border border-yellow-500/30 hover:bg-yellow-500/10 hover:border-yellow-500/50 text-yellow-400 rounded-xl font-medium transition-all shrink-0"
                     >
                       <Star className="w-4 h-4" />
                       Write Review
@@ -530,6 +583,33 @@ root.render(<App />);`;
                     </div>
                   ) : (
                     <>
+                      {/* Links Tab */}
+                      {activeTab === 'links' && hasLinks && (
+                        <div className="space-y-3">
+                          <p className="text-sm text-neutral-400 mb-4">Click any link below to access your purchased content.</p>
+                          {linkDeliverables.map((d, idx) => (
+                            <a
+                              key={`link-${idx}`}
+                              href={d.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between w-full p-4 bg-neutral-950/50 border border-neutral-800 rounded-xl hover:border-violet-500/50 hover:bg-violet-500/5 transition-all group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center shrink-0">
+                                  <ExternalLink className="w-5 h-5 text-violet-400" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-white font-medium truncate">{d.label || `Link ${idx + 1}`}</p>
+                                  <p className="text-xs text-neutral-500 truncate">{d.url}</p>
+                                </div>
+                              </div>
+                              <ExternalLink className="w-4 h-4 text-neutral-600 group-hover:text-violet-400 shrink-0 ml-3 transition-colors" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Files Tab */}
                       {activeTab === 'deliverables' && hasFiles && (
                         <div className="space-y-6">

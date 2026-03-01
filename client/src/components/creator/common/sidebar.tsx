@@ -23,15 +23,23 @@ type LogoutResponse = {
   ok: boolean;
 };
 
+/**
+ * Floating dock navigation sidebar shown to creators on all dashboard pages.
+ * Auto-hides after 5 seconds of inactivity and reappears on hover.
+ * Fetches the current user's name/email on mount to display in the dock.
+ * Handles logout via a confirmation dialog before calling /api/auth/logout.
+ */
 export default function CreatorSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [isVisible, setIsVisible] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const profilePopupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -43,7 +51,9 @@ export default function CreatorSidebar() {
     fetchUser();
   }, []);
 
-  // Hide timer function
+  /**
+   * Starts a 5-second countdown to hide the dock when the user stops interacting.
+   */
   const startHideTimer = () => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
@@ -97,6 +107,17 @@ export default function CreatorSidebar() {
   const handleCancelLogout = () => {
     setShowLogoutConfirm(false);
   };
+
+  // Close profile popup on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profilePopupRef.current && !profilePopupRef.current.contains(e.target as Node)) {
+        setShowProfilePopup(false);
+      }
+    };
+    if (showProfilePopup) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showProfilePopup]);
 
   const renderIcon = (
     IconComponent: React.ComponentType<{ className?: string }>,
@@ -162,24 +183,17 @@ export default function CreatorSidebar() {
       },
     ];
 
-    // Add user info and logout if logged in
+    // Add profile icon if logged in
     if (user) {
-      allItems.push(
-        {
-          title: `${user.name} (${user.email})`,
-          icon: renderIcon(User, false, "text-emerald-500"),
-          href: "#",
-        },
-        {
-          title: loading ? "Logging out..." : "Logout",
-          icon: renderIcon(LogOut, false, "text-red-500"),
-          onClick: handleLogoutClick,
-        }
-      );
+      allItems.push({
+        title: "Profile",
+        icon: renderIcon(User, showProfilePopup, showProfilePopup ? undefined : "text-emerald-500"),
+        onClick: () => setShowProfilePopup((v) => !v),
+      });
     }
 
     return allItems;
-  }, [pathname, loading, user]);
+  }, [pathname, loading, user, showProfilePopup]);
 
   return (
     <>
@@ -230,6 +244,38 @@ export default function CreatorSidebar() {
         </div>
       </div>
       
+      {/* Profile popup */}
+      {showProfilePopup && user && (
+        <div
+          ref={profilePopupRef}
+          className="fixed bottom-24 right-1/4 z-[60] w-64 rounded-2xl bg-neutral-900/95 border border-neutral-700 backdrop-blur-xl shadow-2xl overflow-hidden"
+        >
+          {/* Header */}
+          <div className="p-4 border-b border-neutral-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+                <p className="text-xs text-neutral-400 truncate">{user.email}</p>
+              </div>
+            </div>
+          </div>
+          {/* Actions */}
+          <div className="p-2">
+            <button
+              onClick={() => { setShowProfilePopup(false); handleLogoutClick(); }}
+              disabled={loading}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all disabled:opacity-50"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              {loading ? "Logging out…" : "Log out"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <LogoutConfirmDialog
         open={showLogoutConfirm}
         onOpenChange={setShowLogoutConfirm}

@@ -101,7 +101,7 @@ function BuyNewButton({ productId }: { productId: string }) {
       type="button"
       onClick={onBuy}
       disabled={loading}
-      className="w-full rounded-full border px-4 py-4 bg-pink-500 cursor-pointer text-sm disabled:opacity-65 font-medium"
+      className="w-full rounded-xl px-4 py-4 cursor-pointer text-sm disabled:opacity-50 font-semibold transition-all duration-200 backdrop-blur-md bg-pink-500/20 border border-pink-500/40 text-pink-200 hover:bg-pink-500/30 hover:border-pink-400/60 shadow-lg shadow-pink-500/20 hover:shadow-pink-500/30"
     >
       {loading ? "Starting payment..." : "Buy Now"}
     </button>

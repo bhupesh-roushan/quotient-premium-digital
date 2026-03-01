@@ -12,6 +12,16 @@ import ImportPanel from "./import-panel";
 import { useCallback, useMemo, useState } from "react";
 import { apiClient } from "@/lib/api/client";
 
+/**
+ * Top-level creator product editor.
+ * Provides an Edit tab (EditPanelRedesigned) and an Import tab (ImportPanel)
+ * for managing product metadata and bulk-importing products.
+ * Maintains shared product and assets state so both panels stay in sync.
+ *
+ * @param productId - MongoDB ID of the product being edited
+ * @param initialProduct - Server-fetched product data to seed state
+ * @param initialAssets - Server-fetched image assets for the product
+ */
 function ProductEditor({
   productId,
   initialProduct,

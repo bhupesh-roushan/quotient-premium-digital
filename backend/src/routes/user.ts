@@ -4,12 +4,17 @@ import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 
+/** Express router for user profile endpoints — mounted at /api/user. All routes require auth. */
 const userRouter = Router();
 
-// Configure multer for memory storage
+/** Multer middleware configured for in-memory file buffering (no disk writes). */
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Update profile photo
+/**
+ * POST /api/user/profile/photo  [protected]
+ * Accepts a multipart photo upload, streams it to Cloudinary under
+ * users/:userId/, then persists the returned secure_url on the User document.
+ */
 userRouter.post(
   "/profile/photo",
   requireAuth,
@@ -53,7 +58,10 @@ userRouter.post(
   }
 );
 
-// Get user profile
+/**
+ * GET /api/user/profile  [protected]
+ * Returns the authenticated user's full profile, excluding the passwordHash field.
+ */
 userRouter.get("/profile", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const user = await User.findById(req.user!.id).select("-passwordHash");
@@ -68,7 +76,10 @@ userRouter.get("/profile", requireAuth, async (req: AuthedRequest, res) => {
   }
 });
 
-// Update user profile
+/**
+ * PATCH /api/user/profile  [protected]
+ * Updates the authenticated user's name and/or email. Only provided fields are changed.
+ */
 userRouter.patch("/profile", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const { name, email } = req.body;

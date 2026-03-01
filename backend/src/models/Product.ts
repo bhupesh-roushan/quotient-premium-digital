@@ -38,6 +38,7 @@ export type AIPromptPackMetadata = {
   usageInstructions: string;
   format: "json" | "markdown" | "text";
   downloadType: "structured" | "individual";
+  prompts: Array<{ label: string; content: string }>;
 };
 
 // Template specific metadata
@@ -426,13 +427,14 @@ const LicensingTierSchema = new Schema<any>({
 });
 
 const AIPromptPackSchema = new Schema<AIPromptPackMetadata>({
-  categories: [{ type: [String], required: false }],
+  categories: { type: [String], default: [] },
   difficulty: { type: String, enum: ["beginner", "intermediate", "advanced"], required: false },
-  supportedModels: [{ type: [String], required: false }],
+  supportedModels: { type: [String], default: [] },
   promptCount: { type: Number, required: false, min: 1 },
   usageInstructions: { type: String, required: false },
   format: { type: String, enum: ["json", "markdown", "text"], required: false },
   downloadType: { type: String, enum: ["structured", "individual"], default: "individual" },
+  prompts: [{ label: { type: String, default: "" }, content: { type: String, default: "" } }],
 });
 
 const TemplateSchema = new Schema<TemplateMetadata>({

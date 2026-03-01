@@ -15,6 +15,7 @@ import {
   IconChartBar,
   IconUpload,
   IconChevronUp,
+  IconReceipt,
 } from "@tabler/icons-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useRef } from "react";
@@ -23,6 +24,15 @@ type LogoutResponse = {
   ok: boolean;
 };
 
+/**
+ * Floating dock navigation bar shown to buyers on all buyer-facing pages.
+ * Auto-hides after a short idle period and reappears on mouse hover.
+ * Shows different nav items depending on whether the user is logged in,
+ * and whether they have creator privileges.
+ * Handles logout via a confirmation dialog before calling /api/auth/logout.
+ *
+ * @param isUserLoggedIn - Whether the current session has an authenticated user
+ */
 function BuyerNavbar({ isUserLoggedIn }: { isUserLoggedIn: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -45,7 +55,7 @@ function BuyerNavbar({ isUserLoggedIn }: { isUserLoggedIn: boolean }) {
     }
   }, [isUserLoggedIn]);
 
-  // Hide timer function
+  /** Starts a 3-second countdown to hide the nav dock when the user is idle. */
   const startHideTimer = () => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
@@ -137,6 +147,11 @@ function BuyerNavbar({ isUserLoggedIn }: { isUserLoggedIn: boolean }) {
         title: "Library",
         icon: renderIcon(IconLibrary, pathname === "/library"),
         href: "/library",
+      },
+      {
+        title: "Orders",
+        icon: renderIcon(IconReceipt, pathname === "/orders"),
+        href: "/orders",
       },
     ];
 

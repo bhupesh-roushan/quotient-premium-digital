@@ -301,11 +301,11 @@ export default function CreatorAnalyticsPage() {
                     stats.map((product) => (
                       <tr key={product.productId} className="border-b border-white/5">
                         <td className="p-4">
-                          <div className="font-medium">{product.title}</div>
+                          <div className="font-medium text-white">{product.title}</div>
                         </td>
-                        <td className="p-4 text-right">{formatNumber(product.viewCount)}</td>
-                        <td className="p-4 text-right">{product.soldCount}</td>
-                        <td className="p-4 text-right">{formatCurrency(product.revenue)}</td>
+                        <td className="p-4 text-right text-white">{formatNumber(product.viewCount)}</td>
+                        <td className="p-4 text-right text-white">{product.soldCount}</td>
+                        <td className="p-4 text-right text-white">{formatCurrency(product.revenue)}</td>
                         <td className="p-4 text-right">
                           <Badge className={`${
                             product.conversionRate > 5 
@@ -320,7 +320,7 @@ export default function CreatorAnalyticsPage() {
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <span className="text-yellow-400">★</span>
-                            <span>{product.averageRating.toFixed(1)}</span>
+                            <span className="text-white">{product.averageRating.toFixed(1)}</span>
                           </div>
                         </td>
                       </tr>
@@ -389,13 +389,13 @@ export default function CreatorAnalyticsPage() {
                         {index + 1}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium">{product.title}</div>
+                        <div className="font-medium text-white">{product.title}</div>
                         <div className="text-sm text-white/40">
                           {product.soldCount} orders
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">{formatCurrency(product.revenue)}</div>
+                        <div className="font-bold text-white">{formatCurrency(product.revenue)}</div>
                         <div className="text-sm text-green-400">
                           <ArrowUpRight size={14} className="inline" /> Top seller
                         </div>

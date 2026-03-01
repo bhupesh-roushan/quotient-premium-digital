@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { apiClient } from "@/lib/api/client";
-import { Loader2, TrendingUp, Star, Target, Lightbulb, CheckCircle, AlertCircle, Minimize2, Maximize2, X } from "lucide-react";
+import {
+  TrendingUp, Star, Eye, ShoppingCart, Tag, Users, CheckCircle,
+  AlertCircle, BarChart3, Lightbulb, Sparkles, ChevronDown, Loader2, X,
+} from "lucide-react";
 
 interface BuyerAIInsightsProps {
   product: {
@@ -12,315 +13,306 @@ interface BuyerAIInsightsProps {
     description: string;
     category?: string;
     features?: string[];
+    tags?: string[];
+    deliverables?: any[];
     price: number;
+    stats?: {
+      viewCount: number;
+      soldCount: number;
+      averageRating: number;
+      reviewCount: number;
+      conversionRate: number;
+    };
+    aiPromptPack?: {
+      supportedModels?: string[];
+      categories?: string[];
+      prompts?: Array<{ label: string }>;
+    };
   };
 }
 
-interface AIInsights {
-  valueAnalysis?: {
-    score: number;
-    strengths: string[];
-    considerations: string[];
-    priceComparison: string;
-  };
-  qualityAssessment?: {
-    overallRating: string;
-    features: string[];
-    benefits: string[];
-    completeness: string;
-  };
-  useCases?: {
-    primary: string[];
-    secondary: string[];
-    targetAudience: string[];
-  };
-  recommendation?: {
-    shouldBuy: boolean;
-    confidence: number;
-    reasoning: string;
-    alternatives: string[];
-  };
+interface Insights {
+  verdict: string;
+  summary: string;
+  strengths: string[];
+  considerations: string[];
+  bestFor: string[];
+  valueScore: number;
+  popularityScore: number;
+  contentScore: number;
 }
 
+/**
+ * Renders a horizontal score bar (0–100) with a percentage label.
+ * @param value - Score from 0 to 100
+ * @param color - Tailwind background class e.g. "bg-violet-500"
+ */
+function scoreBar(value: number, color: string) {
+  const pct = Math.min(100, Math.max(0, value));
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs text-neutral-500 w-8 text-right">{pct}</span>
+    </div>
+  );
+}
+
+/** Maps Gemini verdict strings to their Tailwind colour classes for the badge. */
+const VERDICT_STYLES: Record<string, { color: string; bg: string }> = {
+  "Recommended":  { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/30" },
+  "Good Value":   { color: "text-violet-400",  bg: "bg-violet-500/10 border-violet-500/30" },
+  "Niche Pick":   { color: "text-amber-400",   bg: "bg-amber-500/10 border-amber-500/30" },
+  "New Arrival":  { color: "text-neutral-400", bg: "bg-neutral-800/50 border-neutral-700/50" },
+};
+
+/**
+ * AI Product Insights panel shown on the buyer product detail page.
+ * Collapsed by default; clicking "Analyse Product" sends the product data
+ * to POST /api/products/analyse which calls Gemini and returns structured
+ * JSON insights (verdict, summary, scores, strengths, considerations, bestFor).
+ * Results are cached in component state so re-opening doesn't re-call the API.
+ */
 export function BuyerAIInsights({ product }: BuyerAIInsightsProps) {
-  const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isClosed, setIsClosed] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
-  const generateInsights = async () => {
+  const stats = product.stats;
+
+  /** Calls the backend Gemini analysis endpoint and stores results in state. */
+  const analyse = async () => {
     setLoading(true);
     setError(null);
-    
+    setRevealed(true);
     try {
-      const response = await apiClient.post("/api/ai/buyer-analysis", {
+      const res = await apiClient.post("/api/products/analyse", {
         title: product.title,
         description: product.description,
-        category: product.category || "general",
-        features: product.features || [],
+        category: product.category,
         price: product.price,
+        features: product.features,
+        tags: product.tags,
+        stats: product.stats,
+        aiPromptPack: product.aiPromptPack,
       });
-
-      if (response.data?.ok) {
-        setInsights(response.data);
-        setIsClosed(false);
+      if (res.data?.ok) {
+        setInsights(res.data.insights);
       } else {
-        setError("Failed to generate insights");
+        setError(res.data?.error || "Failed to analyse product");
       }
-    } catch (err) {
-      console.error("Error generating AI insights:", err);
-      setError("Something went wrong");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Network error");
     } finally {
       setLoading(false);
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600";
-    if (score >= 60) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  const getRecommendationIcon = (shouldBuy: boolean) => {
-    return shouldBuy ? <CheckCircle className="w-5 h-5 text-green-600" /> : <AlertCircle className="w-5 h-5 text-yellow-600" />;
-  };
-
-  if (isClosed) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            <Lightbulb className="w-5 h-5" />
-            AI Product Insights
-          </h3>
-          <Button onClick={() => setIsClosed(false)} className="flex items-center gap-2 cursor-pointer">
-            <Lightbulb className="w-4 h-4" />
-            Show Insights
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const verdictStyle = insights ? (VERDICT_STYLES[insights.verdict] ?? VERDICT_STYLES["New Arrival"]) : null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold flex items-center gap-2">
-          <Lightbulb className="w-5 h-5" />
-          AI Product Insights
-        </h3>
-        <div className="flex items-center gap-2">
-          {insights && (
-            <Button
-              onClick={() => setIsMinimized(!isMinimized)}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 cursor-pointer"
+    <div className="rounded-2xl border border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm overflow-hidden">
+      {/* Header bar */}
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-neutral-800/60">
+        <Lightbulb className="w-4 h-4 text-violet-400 shrink-0" />
+        <h3 className="text-sm font-semibold text-white">AI Product Insights</h3>
+        {insights && verdictStyle && (
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium backdrop-blur-md border ${verdictStyle.bg} ${verdictStyle.color}`}>
+            {insights.verdict}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          {!revealed ? (
+            <button
+              type="button"
+              onClick={analyse}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium backdrop-blur-md bg-violet-500/20 border border-violet-500/40 text-violet-200 hover:bg-violet-500/30 hover:border-violet-400/60 shadow-lg shadow-violet-500/10 transition-all duration-200"
             >
-              {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
-              {isMinimized ? "Expand" : "Minimize"}
-            </Button>
+              <Sparkles className="w-3.5 h-3.5" />
+              Analyse Product
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setRevealed(false)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-neutral-400 hover:text-neutral-200 border border-neutral-700/50 hover:border-neutral-600 transition-all"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+              Collapse
+            </button>
           )}
-          <Button
-            onClick={() => setIsClosed(true)}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-            Close
-          </Button>
         </div>
       </div>
 
-      {error && (
-        <Card className="p-4 border-red-200 bg-red-50">
-          <div className="flex items-center gap-2 text-red-600">
-            <AlertCircle className="w-4 h-4" />
-            {error}
-          </div>
-        </Card>
-      )}
+      {/* Body */}
+      {revealed && (
+        <div className="p-6">
+          {/* Loading */}
+          {loading && (
+            <div className="flex items-center justify-center gap-3 py-12 text-neutral-400">
+              <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+              <span className="text-sm">Gemini is analysing this product...</span>
+            </div>
+          )}
 
-      {loading && (
-        <Card className="p-8">
-          <div className="flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin" />
-            <span className="ml-2">Analyzing product...</span>
-          </div>
-        </Card>
-      )}
+          {/* Error */}
+          {!loading && error && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              <X className="w-4 h-4 shrink-0" />
+              {error}
+            </div>
+          )}
 
-      {insights && !isMinimized && (
-        <div className="space-y-4">
-          {/* Scrollable container for AI insights */}
-          <div className="max-h-96 overflow-y-auto pr-2 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            {/* Recommendation */}
-            {insights.recommendation && (
-              <Card className="p-6">
-                <div className="flex items-start gap-3">
-                  {getRecommendationIcon(insights.recommendation.shouldBuy)}
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-2">
-                      {insights.recommendation.shouldBuy ? "Recommended" : "Consider Carefully"}
-                    </h4>
-                    <p className="text-sm text-gray-600 mb-3">{insights.recommendation.reasoning}</p>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${
-                        insights.recommendation.shouldBuy 
-                          ? "bg-blue-100 text-blue-800" 
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        {insights.recommendation.confidence}% Confidence
+          {/* Insights grid */}
+          {!loading && insights && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left — scores + stats */}
+              <div className="space-y-5">
+                {/* Stat chips */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-xl bg-neutral-800/40 border border-neutral-700/40 p-3 text-center backdrop-blur-sm">
+                    <Eye className="w-3.5 h-3.5 text-violet-400 mx-auto mb-1" />
+                    <div className="text-sm font-bold text-white">{stats?.viewCount ?? 0}</div>
+                    <div className="text-xs text-neutral-500">Views</div>
+                  </div>
+                  <div className="rounded-xl bg-neutral-800/40 border border-neutral-700/40 p-3 text-center backdrop-blur-sm">
+                    <ShoppingCart className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
+                    <div className="text-sm font-bold text-white">{stats?.soldCount ?? 0}</div>
+                    <div className="text-xs text-neutral-500">Sold</div>
+                  </div>
+                  <div className="rounded-xl bg-neutral-800/40 border border-neutral-700/40 p-3 text-center backdrop-blur-sm">
+                    <Star className="w-3.5 h-3.5 text-yellow-400 mx-auto mb-1" />
+                    <div className="text-sm font-bold text-white">
+                      {stats?.averageRating ? stats.averageRating.toFixed(1) : "—"}
+                    </div>
+                    <div className="text-xs text-neutral-500">{stats?.reviewCount ?? 0} reviews</div>
+                  </div>
+                </div>
+
+                {/* AI score bars */}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 flex items-center gap-1.5">
+                        <TrendingUp className="w-3 h-3 text-violet-400" /> Popularity
+                      </span>
+                      <span className="text-xs font-medium text-violet-400">{insights.popularityScore}/100</span>
+                    </div>
+                    {scoreBar(insights.popularityScore, "bg-violet-500")}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 flex items-center gap-1.5">
+                        <BarChart3 className="w-3 h-3 text-emerald-400" /> Content
+                      </span>
+                      <span className="text-xs font-medium text-emerald-400">{insights.contentScore}/100</span>
+                    </div>
+                    {scoreBar(insights.contentScore, "bg-emerald-500")}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-amber-400" /> Overall Value
+                      </span>
+                      <span className="text-xs font-medium text-amber-400">{insights.valueScore}/100</span>
+                    </div>
+                    {scoreBar(insights.valueScore, "bg-amber-500")}
+                  </div>
+                </div>
+
+                {stats && stats.viewCount > 0 && (
+                  <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 px-4 py-3 flex items-center justify-between backdrop-blur-sm">
+                    <span className="text-xs text-neutral-400">Conversion rate</span>
+                    <span className="text-xs font-semibold text-emerald-400">
+                      {((stats.soldCount / stats.viewCount) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Middle — summary + strengths/considerations */}
+              <div className="space-y-4">
+                <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 p-4 backdrop-blur-sm space-y-3">
+                  <p className="text-xs text-neutral-300 leading-relaxed">{insights.summary}</p>
+                </div>
+                <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 p-4 backdrop-blur-sm space-y-3">
+                  <p className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5" /> Strengths
+                  </p>
+                  <div className="space-y-1.5">
+                    {insights.strengths.map((s, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
+                        <span className="text-xs text-neutral-300">{s}</span>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
-              </Card>
-            )}
-
-            {/* Value Analysis */}
-            {insights.valueAnalysis && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5" />
-                  <h4 className="font-semibold">Value Analysis</h4>
-                  <div className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(insights.valueAnalysis.score)}`}>
-                    {insights.valueAnalysis.score}/100
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <h5 className="font-medium text-green-600 mb-1">Strengths:</h5>
-                    <ul className="text-sm space-y-1">
-                      {insights.valueAnalysis.strengths.map((strength, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 shrink-0" />
-                          {strength}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium text-yellow-600 mb-1">Considerations:</h5>
-                    <ul className="text-sm space-y-1">
-                      {insights.valueAnalysis.considerations.map((consideration, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <AlertCircle className="w-3 h-3 text-yellow-600 mt-0.5 shrink-0" />
-                          {consideration}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 italic">{insights.valueAnalysis.priceComparison}</p>
-                </div>
-              </Card>
-            )}
-
-            {/* Quality Assessment */}
-            {insights.qualityAssessment && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Star className="w-5 h-5" />
-                  <h4 className="font-semibold">Quality Assessment</h4>
-                  <div className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                    {insights.qualityAssessment.overallRating}
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <h5 className="font-medium mb-1">Key Features:</h5>
-                    <ul className="text-sm space-y-1">
-                      {insights.qualityAssessment.features.map((feature, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <CheckCircle className="w-3 h-3 text-blue-600 mt-0.5 shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium mb-1">Benefits:</h5>
-                    <ul className="text-sm space-y-1">
-                      {insights.qualityAssessment.benefits.map((benefit, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <Target className="w-3 h-3 text-green-600 mt-0.5 shrink-0" />
-                          {benefit}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600">{insights.qualityAssessment.completeness}</p>
-                </div>
-              </Card>
-            )}
-
-            {/* Use Cases */}
-            {insights.useCases && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Target className="w-5 h-5" />
-                  <h4 className="font-semibold">Best Use Cases</h4>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <h5 className="font-medium mb-1">Primary Use Cases:</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {insights.useCases.primary.map((useCase, index) => (
-                        <div key={index} className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {useCase}
+                {insights.considerations.length > 0 && (
+                  <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 p-4 backdrop-blur-sm space-y-3">
+                    <p className="text-xs font-medium text-amber-400 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> Considerations
+                    </p>
+                    <div className="space-y-1.5">
+                      {insights.considerations.map((c, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <AlertCircle className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
+                          <span className="text-xs text-neutral-300">{c}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  
-                  <div>
-                    <h5 className="font-medium mb-1">Secondary Use Cases:</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {insights.useCases.secondary.map((useCase, index) => (
-                        <div key={index} className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                          {useCase}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium mb-1">Target Audience:</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {insights.useCases.targetAudience.map((audience, index) => (
-                        <div key={index} className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                          {audience}
-                        </div>
-                      ))}
-                    </div>
+                )}
+              </div>
+
+              {/* Right — best for + tags */}
+              <div className="space-y-4">
+                <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 p-4 backdrop-blur-sm space-y-3">
+                  <p className="text-xs font-medium text-neutral-400 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-pink-400" /> Best for
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {insights.bestFor.map((b, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-full text-xs backdrop-blur-md bg-pink-500/10 border border-pink-500/20 text-pink-300">
+                        {b}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              </Card>
-            )}
-          </div>
 
-          {/* Refresh button outside scrollable area */}
-          <Button onClick={generateInsights} disabled={loading} variant="outline" className="w-full cursor-pointer">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Refresh Analysis
-          </Button>
+                {product.aiPromptPack?.supportedModels && product.aiPromptPack.supportedModels.length > 0 && (
+                  <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 p-4 backdrop-blur-sm space-y-3">
+                    <p className="text-xs font-medium text-neutral-400 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-violet-400" /> Compatible models
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {product.aiPromptPack.supportedModels.map((m, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-full text-xs backdrop-blur-md bg-violet-500/10 border border-violet-500/20 text-violet-300">
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {product.tags && product.tags.length > 0 && (
+                  <div className="rounded-xl bg-neutral-800/30 border border-neutral-700/40 p-4 backdrop-blur-sm space-y-3">
+                    <p className="text-xs font-medium text-neutral-400">Tags</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {product.tags.map((t, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-full text-xs backdrop-blur-md bg-neutral-700/50 border border-neutral-600/40 text-neutral-300">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
-      {!insights && !loading && (
-        <Button onClick={generateInsights} disabled={loading} className="flex items-center gap-2 cursor-pointer">
-          {loading && <Loader2 className="w-4 h-4 animate-spin " />}
-          Analyze Product
-        </Button>
       )}
     </div>
   );

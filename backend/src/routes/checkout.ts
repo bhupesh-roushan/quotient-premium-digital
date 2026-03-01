@@ -6,6 +6,7 @@ import { razorpay, toSubunits } from "../lib/razorpay";
 import { Order } from "../models/Order";
 import crypto from "crypto";
 
+/** Express router for payment checkout endpoints — mounted at /api/checkout. All routes require auth. */
 export const checkoutRouter = Router();
 
 checkoutRouter.use(requireAuth);
@@ -14,6 +15,12 @@ const CreateSessionSchema = z.object({
   productId: z.string().min(1),
 });
 
+/**
+ * POST /api/checkout/create-session  [protected]
+ * Creates a Razorpay order for the given productId and a matching pending Order
+ * document in MongoDB. Returns the Razorpay keyId, orderId, amount, and currency
+ * needed by the frontend to open the Razorpay payment modal.
+ */
 checkoutRouter.post("/create-session", async (req: AuthedRequest, res) => {
   try {
     const { productId } = CreateSessionSchema.parse(req.body);
@@ -78,6 +85,12 @@ const ConfirmSchema = z.object({
   razorpay_signature: z.string().min(1),
 });
 
+/**
+ * POST /api/checkout/confirm  [protected]
+ * Verifies the Razorpay payment signature using HMAC-SHA256, marks the Order
+ * as paid, and increments the product's soldCount stat.
+ * Idempotent — returns ok:true immediately if the order is already paid.
+ */
 checkoutRouter.post("/confirm", async (req: AuthedRequest, res) => {
   try {
     const body = ConfirmSchema.parse(req.body);

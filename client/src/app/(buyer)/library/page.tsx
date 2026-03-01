@@ -8,13 +8,17 @@ import { Library, Sparkles } from "lucide-react";
 
 export type LibraryItem = {
   productId: string;
+  orderId?: string;
   title: string;
   price: number;
+  amount?: number;
   currency: "INR";
   paidAt: string | null;
+  createdAt?: string;
   coverImageUrl?: string;
   description?: string;
   category?: string;
+  license?: string;
   visibility?: string;
   stats?: {
     viewCount: number;

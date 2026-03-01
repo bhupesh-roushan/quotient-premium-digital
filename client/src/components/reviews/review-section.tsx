@@ -35,6 +35,21 @@ interface ReviewSectionProps {
   reviewCount: number;
 }
 
+/**
+ * Full reviews section for a product detail page.
+ * Renders a two-column layout: left column contains the rating summary and
+ * write-review form; right column shows the filterable reviews list.
+ * Fetches reviews from /api/reviews/:productId on mount and refreshes
+ * the list after a new review is submitted.
+ *
+ * @param productId - MongoDB ID of the product
+ * @param userId - ID of the current user (undefined if logged out)
+ * @param isLoggedIn - Whether the user is authenticated
+ * @param hasPurchased - Whether the user has purchased this product
+ * @param isOwner - Whether the current user is the product creator
+ * @param averageRating - Pre-computed average rating from product stats
+ * @param reviewCount - Pre-computed review count from product stats
+ */
 export function ReviewSection({
   productId,
   userId,
@@ -153,69 +168,72 @@ export function ReviewSection({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Stats */}
-      <div className="rounded-xl border border-neutral-800/50 bg-neutral-900/50 p-6 backdrop-blur-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          {/* Rating Summary */}
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <div className="text-5xl font-bold text-white mb-1">
-                {averageRating.toFixed(1)}
-              </div>
-              <StarRating rating={Math.round(averageRating)} size="md" />
-              <p className="text-neutral-400 text-sm mt-1">
-                {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
-              </p>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* LEFT — Rating summary + Write Review */}
+      <div className="space-y-4">
+        {/* Rating Summary */}
+        <div className="rounded-xl border border-neutral-800/50 bg-neutral-900/50 p-6 backdrop-blur-sm space-y-5">
+          <div className="text-center">
+            <div className="text-6xl font-bold text-white mb-1">
+              {averageRating.toFixed(1)}
             </div>
-
-            {/* Rating Bars */}
-            <div className="flex-1 space-y-1 min-w-[200px]">
-              {ratingDistribution.map(({ star, count, percentage }) => (
-                <div key={star} className="flex items-center gap-2">
-                  <span className="text-neutral-400 text-sm w-3">{star}</span>
-                  <Star className="w-3 h-3 text-neutral-600 fill-neutral-600" />
-                  <div className="flex-1 h-2 bg-neutral-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-yellow-400 rounded-full transition-all"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <span className="text-neutral-500 text-xs w-8 text-right">
-                    {count}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <StarRating rating={Math.round(averageRating)} size="md" />
+            <p className="text-neutral-400 text-sm mt-2">
+              {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
+            </p>
           </div>
 
-          {/* Write Review Button */}
-          {isLoggedIn && hasPurchased && !hasReviewed && !isOwner && (
-            <Button
-              onClick={() => setShowForm(true)}
-              className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 text-white"
-            >
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Write a Review
-            </Button>
-          )}
+          {/* Rating Bars */}
+          <div className="space-y-2">
+            {ratingDistribution.map(({ star, count, percentage }) => (
+              <div key={star} className="flex items-center gap-2">
+                <span className="text-neutral-400 text-sm w-3">{star}</span>
+                <Star className="w-3 h-3 text-neutral-600 fill-neutral-600" />
+                <div className="flex-1 h-2 bg-neutral-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-yellow-400 rounded-full transition-all"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                <span className="text-neutral-500 text-xs w-5 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-          {isLoggedIn && isOwner && (
-            <div className="text-neutral-400 text-sm">
-              You cannot review your own product
-            </div>
-          )}
-
-          {isLoggedIn && !hasPurchased && !isOwner && (
-            <div className="text-neutral-400 text-sm">
-              Purchase this product to write a review
-            </div>
-          )}
-
-          {!isLoggedIn && (
+        {/* Write Review CTA */}
+        <div className="rounded-xl border border-neutral-800/50 bg-neutral-900/50 p-5 backdrop-blur-sm space-y-3">
+          {showForm ? (
+            <ReviewForm
+              productId={productId}
+              onSubmit={handleSubmitReview}
+              onCancel={() => setShowForm(false)}
+            />
+          ) : isLoggedIn && hasPurchased && !hasReviewed && !isOwner ? (
+            <>
+              <p className="text-sm text-neutral-300 font-medium">Share your experience</p>
+              <p className="text-xs text-neutral-500">Help others make the right choice with your honest review.</p>
+              <Button
+                onClick={() => setShowForm(true)}
+                className="w-full backdrop-blur-md bg-violet-500/20 border border-violet-500/40 text-violet-200 hover:bg-violet-500/30 hover:border-violet-400/60 transition-all duration-200"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Write a Review
+              </Button>
+            </>
+          ) : isLoggedIn && hasReviewed ? (
+            <p className="text-sm text-emerald-400 flex items-center gap-2">
+              <Star className="w-4 h-4 fill-emerald-400" />
+              You&apos;ve reviewed this product
+            </p>
+          ) : isLoggedIn && isOwner ? (
+            <p className="text-sm text-neutral-500">You cannot review your own product.</p>
+          ) : isLoggedIn && !hasPurchased ? (
+            <p className="text-sm text-neutral-500">Purchase this product to leave a review.</p>
+          ) : (
             <Button
               variant="outline"
-              className="border-neutral-700 text-neutral-300"
+              className="w-full backdrop-blur-md bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-all duration-200"
               onClick={() => (window.location.href = "/login")}
             >
               Sign in to Review
@@ -224,96 +242,87 @@ export function ReviewSection({
         </div>
       </div>
 
-      {/* Review Form */}
-      {showForm && (
-        <ReviewForm
-          productId={productId}
-          onSubmit={handleSubmitReview}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
-
-      {/* Filter Tabs */}
-      {reviews.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-neutral-400 text-sm mr-2 flex items-center gap-1">
-            <Filter className="w-4 h-4" />
-            Filter:
-          </span>
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-              filter === "all"
-                ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
-                : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50 hover:bg-neutral-800"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter("verified")}
-            className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-              filter === "verified"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50 hover:bg-neutral-800"
-            }`}
-          >
-            Verified
-          </button>
-          {[5, 4, 3, 2, 1].map((star) => (
+      {/* RIGHT — Reviews List */}
+      <div className="lg:col-span-2 space-y-4">
+        {/* Filter Tabs */}
+        {reviews.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-neutral-400 text-sm mr-1 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
+              Filter:
+            </span>
             <button
-              key={star}
-              onClick={() => setFilter(filter === star ? "all" : star)}
-              className={`px-3 py-1.5 rounded-full text-sm transition-colors flex items-center gap-1 ${
-                filter === star
-                  ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+              onClick={() => setFilter("all")}
+              className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                filter === "all"
+                  ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
                   : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50 hover:bg-neutral-800"
               }`}
             >
-              {star} <Star className="w-3 h-3 fill-current" />
+              All
             </button>
-          ))}
-        </div>
-      )}
-
-      {/* Reviews List */}
-      <div className="space-y-4">
-        {filteredReviews.length === 0 ? (
-          <div className="text-center py-12 rounded-xl border border-neutral-800/50 bg-neutral-900/30">
-            <MessageSquare className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-            <p className="text-neutral-400">
-              {reviews.length === 0
-                ? isOwner
-                  ? "No reviews yet."
-                  : "No reviews yet. Be the first to review!"
-                : "No reviews match the selected filter."}
-            </p>
+            <button
+              onClick={() => setFilter("verified")}
+              className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
+                filter === "verified"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50 hover:bg-neutral-800"
+              }`}
+            >
+              Verified
+            </button>
+            {[5, 4, 3, 2, 1].map((star) => (
+              <button
+                key={star}
+                onClick={() => setFilter(filter === star ? "all" : star)}
+                className={`px-3 py-1.5 rounded-full text-xs transition-colors flex items-center gap-1 ${
+                  filter === star
+                    ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                    : "bg-neutral-800/50 text-neutral-400 border border-neutral-700/50 hover:bg-neutral-800"
+                }`}
+              >
+                {star} <Star className="w-3 h-3 fill-current" />
+              </button>
+            ))}
           </div>
-        ) : (
-          filteredReviews.map((review) => (
-            <ReviewCard
-              key={review._id}
-              review={review}
-              isOwnReview={review.userId === userId}
-              onHelpful={handleMarkHelpful}
-              onDelete={handleDeleteReview}
-            />
-          ))
+        )}
+
+        {/* Reviews List */}
+        <div className="space-y-4">
+          {filteredReviews.length === 0 ? (
+            <div className="text-center py-12 rounded-xl border border-neutral-800/50 bg-neutral-900/30">
+              <MessageSquare className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+              <p className="text-neutral-400">
+                {reviews.length === 0
+                  ? isOwner
+                    ? "No reviews yet."
+                    : "No reviews yet. Be the first to review!"
+                  : "No reviews match the selected filter."}
+              </p>
+            </div>
+          ) : (
+            filteredReviews.map((review) => (
+              <ReviewCard
+                key={review._id}
+                review={review}
+                isOwnReview={review.userId === userId}
+                onHelpful={handleMarkHelpful}
+                onDelete={handleDeleteReview}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Load More */}
+        {filteredReviews.length > 10 && (
+          <div className="text-center">
+            <Button variant="outline" className="border-neutral-700 text-neutral-300">
+              <ChevronDown className="w-4 h-4 mr-2" />
+              Load More Reviews
+            </Button>
+          </div>
         )}
       </div>
-
-      {/* Load More */}
-      {filteredReviews.length > 10 && (
-        <div className="text-center">
-          <Button
-            variant="outline"
-            className="border-neutral-700 text-neutral-300"
-          >
-            <ChevronDown className="w-4 h-4 mr-2" />
-            Load More Reviews
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

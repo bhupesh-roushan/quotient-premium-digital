@@ -178,7 +178,7 @@ export class AIIntelligenceEngine {
     if (options.geminiApiKey) {
       this.genAI = new GoogleGenerativeAI(options.geminiApiKey);
       this.model = this.genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.0-flash",
         generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 2048 },
       });
       console.log("AI Engine initialized");

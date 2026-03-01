@@ -17,7 +17,14 @@ import { checkoutRouter } from "./routes/checkout";
 import { authRouter } from "./routes/auth";
 import { libraryRouter } from "./routes/library";
 import userRouter from "./routes/user";
+import { promptRunnerRouter } from "./routes/promptRunner";
 
+/**
+ * Creates and configures the Express application.
+ * Registers all middleware (CORS, JSON body parsing, cookies) and mounts
+ * every API router at its designated prefix. Returns the configured app
+ * instance so server.ts can attach it to an HTTP server.
+ */
 export function createApp() {
 
   const app = express();
@@ -33,9 +40,9 @@ export function createApp() {
 
   app.use(cookieParser());
 
-  // all routes placeholder
+  // ── Route registrations ──────────────────────────────────────────────────
 
-  app.use("/api/auth", authRouter);
+  app.use("/api/auth", authRouter);         // register / login / logout / me
 
   app.use("/api/user", userRouter);
 
@@ -57,6 +64,8 @@ export function createApp() {
   app.use("/api/serpapi", serpApiRouter);
 
   app.use("/api/ai", aiRouter);
+
+  app.use("/api/prompt-runner", promptRunnerRouter);
 
   app.use("/api/reviews", reviewRouter);
 

@@ -12,14 +12,15 @@ import { ImageAsset } from "../models/ImageAsset";
 
 
 
+/** Express router for buyer library endpoints — mounted at /api/library. All routes require auth. */
 export const libraryRouter = Router();
-
-
 
 libraryRouter.use(requireAuth);
 
-
-
+/**
+ * Transforms a Cloudinary secure URL into a force-download (attachment) URL
+ * by injecting the fl_attachment flag into the /upload/ path segment.
+ */
 function toAttachmentUrl(secureUrl: string) {
 
   return secureUrl.includes("/upload/")
@@ -32,6 +33,11 @@ function toAttachmentUrl(secureUrl: string) {
 
 
 
+/**
+ * GET /api/library  [protected]
+ * Returns all paid orders for the authenticated buyer, joined with product
+ * details and cover image via MongoDB aggregation. Sorted newest-first.
+ */
 libraryRouter.get("/", async (req: AuthedRequest, res) => {
 
   try {
@@ -110,9 +116,13 @@ libraryRouter.get("/", async (req: AuthedRequest, res) => {
 
           productId: { $toString: "$p._id" },
 
+          orderId: { $toString: "$_id" },
+
           title: "$p.title",
 
           price: "$p.price",
+
+          amount: 1,
 
           currency: "$p.currency",
 
@@ -120,11 +130,15 @@ libraryRouter.get("/", async (req: AuthedRequest, res) => {
 
           category: "$p.category",
 
+          license: "$p.license",
+
           visibility: "$p.visibility",
 
           stats: "$p.stats",
 
           paidAt: 1,
+
+          createdAt: 1,
 
           coverImageUrl: "$coverImage.cloudinary.secureUrl",
 
@@ -156,6 +170,11 @@ libraryRouter.get("/", async (req: AuthedRequest, res) => {
 
 
 
+/**
+ * GET /api/library/:productId/assets  [protected]
+ * Returns all image assets for a purchased product, ordered by orderIndex.
+ * Returns 400 if the user hasn't purchased the product.
+ */
 libraryRouter.get("/:productId/assets", async (req: AuthedRequest, res) => {
 
   try {
@@ -254,6 +273,12 @@ libraryRouter.get("/:productId/assets", async (req: AuthedRequest, res) => {
 
 
 
+/**
+ * GET /api/library/:productId/deliverables  [protected]
+ * Returns the product's deliverables array and install instructions.
+ * For code-template products, injects each code file as a data-URI deliverable.
+ * Returns 400 if the user hasn't purchased the product.
+ */
 libraryRouter.get(
 
   "/:productId/deliverables",
@@ -374,6 +399,11 @@ libraryRouter.get(
 
 
 
+/**
+ * GET /api/library/assets/:assetId/download  [protected]
+ * Verifies the buyer has purchased the product this asset belongs to, then
+ * redirects to the Cloudinary force-download URL (fl_attachment).
+ */
 libraryRouter.get(
 
   "/assets/:assetId/download",

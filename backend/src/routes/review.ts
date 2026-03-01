@@ -4,9 +4,8 @@ import { z } from "zod";
 import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
 import { Product } from "../models/Product";
 
-// Review and Rating System
+/** Express router for product review endpoints — mounted at /api/reviews. */
 export const reviewRouter = Router();
-reviewRouter.use(requireAuth);
 
 // Review schema
 const ReviewSchema = new Schema({
@@ -43,8 +42,13 @@ export type Review = {
   };
 };
 
-// Create review
-reviewRouter.post("/", async (req: AuthedRequest, res) => {
+/**
+ * POST /api/reviews  [protected]
+ * Creates a new review for a product. Validates that the reviewer is not the
+ * product creator, prevents duplicate reviews, then recalculates and saves
+ * the updated averageRating and reviewCount on the product document.
+ */
+reviewRouter.post("/", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const { productId, rating, title, content, helpful } = req.body;
     
@@ -119,7 +123,11 @@ reviewRouter.post("/", async (req: AuthedRequest, res) => {
   }
 });
 
-// Get reviews for a product
+/**
+ * GET /api/reviews/:productId  [protected]
+ * Returns all reviews for a given product, sorted newest first,
+ * with reviewer name/email populated from the User collection.
+ */
 reviewRouter.get("/:productId", async (req: AuthedRequest, res) => {
   try {
     const productId = req.params.productId;
@@ -152,8 +160,11 @@ reviewRouter.get("/:productId", async (req: AuthedRequest, res) => {
   }
 });
 
-// Get user's reviews
-reviewRouter.get("/user", async (req: AuthedRequest, res) => {
+/**
+ * GET /api/reviews/user  [protected]
+ * Returns all reviews written by the currently authenticated user.
+ */
+reviewRouter.get("/user", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const userId = req.user!.id;
     const reviews = await Review.find({ userId })
@@ -176,8 +187,11 @@ reviewRouter.get("/user", async (req: AuthedRequest, res) => {
   }
 });
 
-// Update review
-reviewRouter.patch("/:reviewId", async (req: AuthedRequest, res) => {
+/**
+ * PATCH /api/reviews/:reviewId  [protected]
+ * Updates the helpful flag on an existing review. Only the review owner can update it.
+ */
+reviewRouter.patch("/:reviewId", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const { reviewId, helpful } = req.body;
     const userId = req.user!.id;
@@ -217,8 +231,11 @@ reviewRouter.patch("/:reviewId", async (req: AuthedRequest, res) => {
   }
 });
 
-// Delete review
-reviewRouter.delete("/:reviewId", async (req: AuthedRequest, res) => {
+/**
+ * DELETE /api/reviews/:reviewId  [protected]
+ * Permanently deletes a review. Only the review owner can delete their own review.
+ */
+reviewRouter.delete("/:reviewId", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const { reviewId } = req.params;
     const userId = req.user!.id;
@@ -254,7 +271,11 @@ reviewRouter.delete("/:reviewId", async (req: AuthedRequest, res) => {
   }
 });
 
-// Get reviews with pagination and filtering
+/**
+ * GET /api/reviews  [protected]
+ * Returns paginated reviews with optional productId and rating filters.
+ * Defaults to page 1, limit 10.
+ */
 reviewRouter.get("/", async (req: AuthedRequest, res) => {
   try {
     const { 

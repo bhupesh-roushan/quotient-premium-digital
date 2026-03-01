@@ -3,8 +3,14 @@ import { User } from "../models/User";
 import { hashPassword, signJwt, verifyPassword } from "../lib/auth";
 import { AuthedRequest, requireAuth } from "../middleware/requireAuth";
 
+/** Express router for all authentication endpoints — mounted at /api/auth */
 export const authRouter = Router();
 
+/**
+ * POST /api/auth/register
+ * Creates a new user account. Validates uniqueness of email, hashes password,
+ * and returns the created user profile (no session/cookie set on register).
+ */
 authRouter.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body ?? {};
@@ -55,6 +61,11 @@ authRouter.post("/register", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/login
+ * Authenticates user with email + password, issues a signed JWT stored
+ * as an httpOnly cookie valid for 7 days.
+ */
 authRouter.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body ?? {};
@@ -123,6 +134,10 @@ authRouter.post("/login", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/logout
+ * Clears the auth cookie to end the user's session.
+ */
 authRouter.post("/logout", async (req, res) => {
   try {
     console.log("Logout request received");
@@ -140,7 +155,10 @@ authRouter.post("/logout", async (req, res) => {
   }
 });
 
-// protected routes
+/**
+ * GET /api/auth/me  [protected]
+ * Returns the currently authenticated user's profile, populated by requireAuth middleware.
+ */
 authRouter.get("/me", requireAuth, async (req: AuthedRequest, res) => {
   try {
     return res.json({ ok: true, user: req.user });

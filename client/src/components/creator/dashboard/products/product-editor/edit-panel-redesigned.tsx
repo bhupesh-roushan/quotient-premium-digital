@@ -61,8 +61,43 @@ import {
   Check,
   ChevronDown,
   Loader2,
-  Trash2
+  Trash2,
+  Play,
+  Database,
+  Clock,
+  Globe,
+  Wrench,
+  GitBranch,
+  Users,
+  ShieldCheck,
+  TestTube2,
 } from "lucide-react";
+
+const AI_PLATFORMS = [
+  { value: "chatgpt", label: "ChatGPT", icon: "🤖" },
+  { value: "claude", label: "Claude", icon: "🧠" },
+  { value: "gemini", label: "Gemini", icon: "✨" },
+  { value: "midjourney", label: "Midjourney", icon: "🎨" },
+  { value: "dall-e", label: "DALL·E", icon: "🖼️" },
+  { value: "stable-diffusion", label: "Stable Diffusion", icon: "🌊" },
+  { value: "llama", label: "Llama", icon: "🦙" },
+  { value: "mistral", label: "Mistral", icon: "💨" },
+  { value: "perplexity", label: "Perplexity", icon: "🔍" },
+  { value: "grok", label: "Grok", icon: "⚡" },
+];
+
+const AI_USE_CASES = [
+  { value: "marketing", label: "Marketing" },
+  { value: "coding", label: "Coding" },
+  { value: "writing", label: "Writing" },
+  { value: "art", label: "Art & Design" },
+  { value: "business", label: "Business" },
+  { value: "productivity", label: "Productivity" },
+  { value: "sales", label: "Sales" },
+  { value: "education", label: "Education" },
+  { value: "seo", label: "SEO" },
+  { value: "social-media", label: "Social Media" },
+];
 
 interface CodeFile {
   filename: string;
@@ -89,6 +124,7 @@ type PatchProductBody = {
   dependencies?: string[];
   hasLivePreview?: boolean;
   sandboxEnabled?: boolean;
+  tags?: string[];
 };
 
 // Categories with icons - using Lucide icon names
@@ -196,12 +232,162 @@ function EditPanelRedesigned({
   const [componentDeliverables, setComponentDeliverables] = useState<ComponentDeliverable[]>([]);
   const [uploadingFile, setUploadingFile] = useState<number | null>(null);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [tags, setTags] = useState<string[]>(
+    () => (product as any)?.tags ?? []
+  );
+  const [tagInput, setTagInput] = useState("");
+
+  const addTag = (val: string) => {
+    const cleaned = val.trim().toLowerCase().replace(/\s+/g, "-");
+    if (cleaned && !tags.includes(cleaned)) setTags(prev => [...prev, cleaned]);
+    setTagInput("");
+  };
+
+  // AI Prompt Pack specific
+  const [supportedModels, setSupportedModels] = useState<string[]>(
+    () => (product as any)?.aiPromptPack?.supportedModels ?? []
+  );
+  const [useCases, setUseCases] = useState<string[]>(
+    () => (product as any)?.aiPromptPack?.categories ?? []
+  );
+  const [prompts, setPrompts] = useState<Array<{ label: string; content: string }>>(
+    () => (product as any)?.aiPromptPack?.prompts ?? []
+  );
+  const [promptRunnerText, setPromptRunnerText] = useState("");
+  const [promptContext, setPromptContext] = useState("");
+  const [promptRunnerOutput, setPromptRunnerOutput] = useState("");
+  const [runningPrompt, setRunningPrompt] = useState(false);
+  const [promptError, setPromptError] = useState("");
+
+  const isAIPromptPack = templateKind === "ai-prompt-pack";
+  const isTemplate = ["notion-template", "resume-template", "ui-kit", "figma-assets", "productivity-dashboard"].includes(templateKind ?? "");
+  const isDevBoilerplate = ["dev-boilerplate", "mern-starter", "auth-system", "saas-starter", "api-scaffold",
+    "react-template", "vue-template", "angular-template", "javascript-component",
+    "typescript-component", "css-template", "html-template"].includes(templateKind ?? "");
+  const isWorkflow = ["workflow-system", "automation-pipeline", "ai-productivity"].includes(templateKind ?? "");
+  const isGuide = ["business-guide", "automation-guide"].includes(templateKind ?? "");
+  const isFramework = templateKind === "productivity-framework";
+
+  // Template metadata state
+  const [templateCompatibility, setTemplateCompatibility] = useState<string[]>(() => (product as any)?.template?.compatibility ?? []);
+  const [templateFeatures, setTemplateFeatures] = useState<string[]>(() => (product as any)?.template?.features ?? []);
+  const [templateCustomization, setTemplateCustomization] = useState<"low" | "medium" | "high">(() => (product as any)?.template?.customizationLevel ?? "medium");
+  const [templateIncludesAssets, setTemplateIncludesAssets] = useState<boolean>(() => !!(product as any)?.template?.includesAssets);
+  const [compatibilityInput, setCompatibilityInput] = useState("");
+  const [featureInput, setFeatureInput] = useState("");
+
+  // Developer boilerplate state
+  const [techStack, setTechStack] = useState<string[]>(() => (product as any)?.developerBoilerplate?.techStack ?? []);
+  const [architecture, setArchitecture] = useState<string>(() => (product as any)?.developerBoilerplate?.architecture ?? "");
+  const [devIncludesAuth, setDevIncludesAuth] = useState<boolean>(() => !!(product as any)?.developerBoilerplate?.includesAuth);
+  const [devIncludesDatabase, setDevIncludesDatabase] = useState<boolean>(() => !!(product as any)?.developerBoilerplate?.includesDatabase);
+  const [devIncludesTesting, setDevIncludesTesting] = useState<boolean>(() => !!(product as any)?.developerBoilerplate?.includesTesting);
+  const [devDeploymentReady, setDevDeploymentReady] = useState<boolean>(() => !!(product as any)?.developerBoilerplate?.deploymentReady);
+  const [devDocumentation, setDevDocumentation] = useState<boolean>(() => !!(product as any)?.developerBoilerplate?.documentation);
+  const [techStackInput, setTechStackInput] = useState("");
+
+  // Workflow metadata state
+  const [workflowType, setWorkflowType] = useState<string>(() => (product as any)?.workflowSystem?.workflowType ?? "");
+  const [workflowSteps, setWorkflowSteps] = useState<number>(() => (product as any)?.workflowSystem?.stepsCount ?? 0);
+  const [workflowTools, setWorkflowTools] = useState<string[]>(() => (product as any)?.workflowSystem?.tools ?? []);
+  const [integrationLevel, setIntegrationLevel] = useState<string>(() => (product as any)?.workflowSystem?.integrationLevel ?? "basic");
+  const [timeToImplement, setTimeToImplement] = useState<string>(() => (product as any)?.workflowSystem?.timeToImplement ?? "");
+  const [workflowPlatforms, setWorkflowPlatforms] = useState<string[]>(() => (product as any)?.workflowSystem?.platforms ?? []);
+  const [workflowToolInput, setWorkflowToolInput] = useState("");
+  const [platformInput, setPlatformInput] = useState("");
+
+  // Guide metadata state
+  const [guideComplexity, setGuideComplexity] = useState<"beginner" | "intermediate" | "advanced">(() => (product as any)?.automationGuide?.complexity ?? "beginner");
+  const [guidePrerequisites, setGuidePrerequisites] = useState<string[]>(() => (product as any)?.automationGuide?.prerequisites ?? []);
+  const [guideTools, setGuideTools] = useState<string[]>(() => (product as any)?.automationGuide?.toolsRequired ?? []);
+  const [guideTime, setGuideTime] = useState<string>(() => (product as any)?.automationGuide?.estimatedTime ?? "");
+  const [guideOutcomes, setGuideOutcomes] = useState<string[]>(() => (product as any)?.automationGuide?.outcomes ?? []);
+  const [guideIncludesTemplates, setGuideIncludesTemplates] = useState<boolean>(() => !!(product as any)?.automationGuide?.includesTemplates);
+  const [prereqInput, setPrereqInput] = useState("");
+  const [guideToolInput, setGuideToolInput] = useState("");
+  const [outcomeInput, setOutcomeInput] = useState("");
+
+  // Productivity framework state
+  const [frameworkMethodology, setFrameworkMethodology] = useState<string>(() => (product as any)?.productivityFramework?.methodology ?? "");
+  const [frameworkComponents, setFrameworkComponents] = useState<string[]>(() => (product as any)?.productivityFramework?.components ?? []);
+  const [frameworkIntegrations, setFrameworkIntegrations] = useState<string[]>(() => (product as any)?.productivityFramework?.integrations ?? []);
+  const [frameworkScalability, setFrameworkScalability] = useState<string>(() => (product as any)?.productivityFramework?.scalability ?? "personal");
+  const [frameworkIncludesTemplates, setFrameworkIncludesTemplates] = useState<boolean>(() => !!(product as any)?.productivityFramework?.includesTemplates);
+  const [frameworkIncludesWorkflows, setFrameworkIncludesWorkflows] = useState<boolean>(() => !!(product as any)?.productivityFramework?.includesWorkflows);
+  const [frameworkComponentInput, setFrameworkComponentInput] = useState("");
+  const [frameworkIntegrationInput, setFrameworkIntegrationInput] = useState("");
+
+  const toggleModel = (val: string) =>
+    setSupportedModels(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+
+  const toggleUseCase = (val: string) =>
+    setUseCases(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+
+  const runPrompt = async () => {
+    if (!promptRunnerText.trim()) return;
+    setRunningPrompt(true);
+    setPromptRunnerOutput("");
+    setPromptError("");
+    try {
+      const res = await apiClient.post("/api/prompt-runner", {
+        prompt: promptRunnerText,
+        context: promptContext || undefined,
+      });
+      if (res?.data?.ok) {
+        setPromptRunnerOutput(res.data.output);
+      } else {
+        setPromptError(res?.data?.error || "Failed to run prompt");
+      }
+    } catch (err: any) {
+      setPromptError(err?.response?.data?.error || "Network error");
+    } finally {
+      setRunningPrompt(false);
+    }
+  };
+
   const router = useRouter();
 
   // Check if this is a code template
   const isCodeTemplate = templateKind?.includes("-template") || templateKind?.includes("-component") || 
                         templateTool === "react" || templateTool === "nextjs" || templateTool === "vue" ||
                         templateKind === "react_component" || templateKind === "dev_boilerplate";
+
+  // Sync AI prompt pack & tags state when product prop changes (e.g. after save)
+  useEffect(() => {
+    setSupportedModels((product as any)?.aiPromptPack?.supportedModels ?? []);
+    setUseCases((product as any)?.aiPromptPack?.categories ?? []);
+    setPrompts((product as any)?.aiPromptPack?.prompts ?? []);
+    setTags((product as any)?.tags ?? []);
+    setTemplateCompatibility((product as any)?.template?.compatibility ?? []);
+    setTemplateFeatures((product as any)?.template?.features ?? []);
+    setTemplateCustomization((product as any)?.template?.customizationLevel ?? "medium");
+    setTemplateIncludesAssets(!!(product as any)?.template?.includesAssets);
+    setTechStack((product as any)?.developerBoilerplate?.techStack ?? []);
+    setArchitecture((product as any)?.developerBoilerplate?.architecture ?? "");
+    setDevIncludesAuth(!!(product as any)?.developerBoilerplate?.includesAuth);
+    setDevIncludesDatabase(!!(product as any)?.developerBoilerplate?.includesDatabase);
+    setDevIncludesTesting(!!(product as any)?.developerBoilerplate?.includesTesting);
+    setDevDeploymentReady(!!(product as any)?.developerBoilerplate?.deploymentReady);
+    setDevDocumentation(!!(product as any)?.developerBoilerplate?.documentation);
+    setWorkflowType((product as any)?.workflowSystem?.workflowType ?? "");
+    setWorkflowSteps((product as any)?.workflowSystem?.stepsCount ?? 0);
+    setWorkflowTools((product as any)?.workflowSystem?.tools ?? []);
+    setIntegrationLevel((product as any)?.workflowSystem?.integrationLevel ?? "basic");
+    setTimeToImplement((product as any)?.workflowSystem?.timeToImplement ?? "");
+    setWorkflowPlatforms((product as any)?.workflowSystem?.platforms ?? []);
+    setGuideComplexity((product as any)?.automationGuide?.complexity ?? "beginner");
+    setGuidePrerequisites((product as any)?.automationGuide?.prerequisites ?? []);
+    setGuideTools((product as any)?.automationGuide?.toolsRequired ?? []);
+    setGuideTime((product as any)?.automationGuide?.estimatedTime ?? "");
+    setGuideOutcomes((product as any)?.automationGuide?.outcomes ?? []);
+    setGuideIncludesTemplates(!!(product as any)?.automationGuide?.includesTemplates);
+    setFrameworkMethodology((product as any)?.productivityFramework?.methodology ?? "");
+    setFrameworkComponents((product as any)?.productivityFramework?.components ?? []);
+    setFrameworkIntegrations((product as any)?.productivityFramework?.integrations ?? []);
+    setFrameworkScalability((product as any)?.productivityFramework?.scalability ?? "personal");
+    setFrameworkIncludesTemplates(!!(product as any)?.productivityFramework?.includesTemplates);
+    setFrameworkIncludesWorkflows(!!(product as any)?.productivityFramework?.includesWorkflows);
+  }, [product]);
 
   // Initialize from product data
   useEffect(() => {
@@ -345,17 +531,22 @@ function EditPanelRedesigned({
 
   async function saveBasics() {
     // Validation: Check for required deliverables
-    const hasComponent = codeFiles.length > 0;
-    const hasPdf = deliverables.some(d => d.kind === 'file' && (d.label.toLowerCase().endsWith('.pdf') || d.url.toLowerCase().includes('.pdf')));
-    const hasImage = assets.length > 0; // Check assets for preview images
-    
-    if (!hasComponent || !hasPdf || !hasImage) {
-      const missing = [];
-      if (!hasComponent) missing.push('at least 1 code component/file');
-      if (!hasPdf) missing.push('at least 1 PDF file');
-      if (!hasImage) missing.push('at least 1 preview image (use Preview Images section)');
-      toast.error(`Please add the following required deliverables:\n- ${missing.join('\n- ')}`);
-      return;
+    const hasImage = assets.length > 0;
+
+    if (isAIPromptPack || isTemplate || isWorkflow || isGuide || isFramework) {
+      if (!hasImage) {
+        toast.error("Please add at least 1 preview image (use Preview Images section)");
+        return;
+      }
+    } else {
+      const hasComponent = codeFiles.length > 0;
+      if (!hasComponent || !hasImage) {
+        const missing = [];
+        if (!hasComponent) missing.push('at least 1 code component/file');
+        if (!hasImage) missing.push('at least 1 preview image (use Preview Images section)');
+        toast.error(`Please add the following required deliverables:\n- ${missing.join('\n- ')}`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -366,14 +557,65 @@ function EditPanelRedesigned({
         category: templateKind,
         installInstructions,
         deliverables, // Add deliverables at top level
+        tags,
+        ...(isAIPromptPack && {
+          aiPromptPack: { supportedModels, categories: useCases, prompts },
+        } as any),
         template: {
           kind: templateKind,
           ...(templateTool && { tool: templateTool }),
           deliverables,
           ...(isCodeTemplate && {
             componentDeliverables: componentDeliverables.length > 0 ? componentDeliverables : undefined
-          })
+          }),
+          ...(isTemplate && {
+            compatibility: templateCompatibility,
+            features: templateFeatures,
+            customizationLevel: templateCustomization,
+            includesAssets: templateIncludesAssets,
+          }),
         },
+        ...(isDevBoilerplate && {
+          developerBoilerplate: {
+            techStack,
+            architecture,
+            includesAuth: devIncludesAuth,
+            includesDatabase: devIncludesDatabase,
+            includesTesting: devIncludesTesting,
+            deploymentReady: devDeploymentReady,
+            documentation: devDocumentation,
+          },
+        } as any),
+        ...(isWorkflow && {
+          workflowSystem: {
+            workflowType,
+            stepsCount: workflowSteps,
+            tools: workflowTools,
+            integrationLevel,
+            timeToImplement,
+            platforms: workflowPlatforms,
+          },
+        } as any),
+        ...(isGuide && {
+          automationGuide: {
+            complexity: guideComplexity,
+            prerequisites: guidePrerequisites,
+            toolsRequired: guideTools,
+            estimatedTime: guideTime,
+            outcomes: guideOutcomes,
+            includesTemplates: guideIncludesTemplates,
+          },
+        } as any),
+        ...(isFramework && {
+          productivityFramework: {
+            methodology: frameworkMethodology,
+            components: frameworkComponents,
+            integrations: frameworkIntegrations,
+            scalability: frameworkScalability,
+            includesTemplates: frameworkIncludesTemplates,
+            includesWorkflows: frameworkIncludesWorkflows,
+          },
+        } as any),
         description,
         ...(isCodeTemplate && {
           codeFiles: codeFiles.length > 0 ? codeFiles : undefined,
@@ -690,6 +932,40 @@ function EditPanelRedesigned({
                         </div>
                       </div>
 
+                      {/* Tags */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-neutral-300">Tags</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === ",") {
+                                e.preventDefault();
+                                addTag(tagInput);
+                              }
+                            }}
+                            placeholder="Add a tag and press Enter"
+                            className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50"
+                          />
+                          <Button type="button" onClick={() => addTag(tagInput)} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white">
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        {tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {tags.map((tag) => (
+                              <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-violet-500/10 border border-violet-500/30 text-violet-300">
+                                {tag}
+                                <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))} className="hover:text-white">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
                       {/* Tool/Framework */}
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-neutral-300">Primary Tool/Framework</label>
@@ -754,6 +1030,643 @@ function EditPanelRedesigned({
                   </Card>
                 </div>
 
+                {/* AI Prompt Pack specific fields */}
+                {isAIPromptPack && (
+                  <div className="space-y-4">
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      {/* Compatible Platforms */}
+                      <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center gap-2 text-white">
+                            <Bot className="w-4 h-4 text-violet-400" />
+                            Compatible Platforms
+                          </CardTitle>
+                          <p className="text-xs text-neutral-500">Select all AI tools these prompts work with</p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-wrap gap-2">
+                            {AI_PLATFORMS.map((p) => {
+                              const selected = supportedModels.includes(p.value);
+                              return (
+                                <button
+                                  key={p.value}
+                                  type="button"
+                                  onClick={() => toggleModel(p.value)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                    selected
+                                      ? "bg-violet-500/20 border-violet-500/50 text-violet-300"
+                                      : "bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600"
+                                  }`}
+                                >
+                                  <span>{p.icon}</span>
+                                  {p.label}
+                                  {selected && <Check className="w-3 h-3" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {supportedModels.length > 0 && (
+                            <p className="text-xs text-violet-400 mt-3">{supportedModels.length} platform{supportedModels.length !== 1 ? "s" : ""} selected</p>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Use Cases */}
+                      <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base flex items-center gap-2 text-white">
+                            <Zap className="w-4 h-4 text-amber-400" />
+                            Use Cases
+                          </CardTitle>
+                          <p className="text-xs text-neutral-500">What can buyers use these prompts for?</p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-wrap gap-2">
+                            {AI_USE_CASES.map((uc) => {
+                              const selected = useCases.includes(uc.value);
+                              return (
+                                <button
+                                  key={uc.value}
+                                  type="button"
+                                  onClick={() => toggleUseCase(uc.value)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                    selected
+                                      ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                                      : "bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600"
+                                  }`}
+                                >
+                                  {uc.label}
+                                  {selected && <Check className="w-3 h-3" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {useCases.length > 0 && (
+                            <p className="text-xs text-amber-400 mt-3">{useCases.length} use case{useCases.length !== 1 ? "s" : ""} selected</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Prompts Management */}
+                    <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                      <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <div>
+                          <CardTitle className="text-base flex items-center gap-2 text-white">
+                            <Bot className="w-4 h-4 text-violet-400" />
+                            Prompts
+                            <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-violet-500/10 border border-violet-500/30 text-violet-400 font-normal">
+                              {prompts.length} saved
+                            </span>
+                          </CardTitle>
+                          <p className="text-xs text-neutral-500 mt-1">Add your prompts — they are saved as deliverables and buyers can run them via Gemini (without seeing the text)</p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => setPrompts(prev => [...prev, { label: "", content: "" }])}
+                          className="shrink-0 bg-violet-500/10 border border-violet-500/30 hover:bg-violet-500/20 text-violet-300 transition-all"
+                        >
+                          <Plus className="w-4 h-4 mr-1.5" />
+                          Add Prompt
+                        </Button>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {prompts.length === 0 ? (
+                          <div className="text-center py-8 text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
+                            <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                            <p className="text-sm">No prompts yet.</p>
+                            <p className="text-xs mt-1">Click "Add Prompt" to start building your pack.</p>
+                          </div>
+                        ) : (
+                          prompts.map((p, idx) => (
+                            <div key={idx} className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-neutral-500 font-mono w-6 shrink-0">#{idx + 1}</span>
+                                <input
+                                  type="text"
+                                  value={p.label}
+                                  onChange={(e) => setPrompts(prev => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
+                                  placeholder="Prompt label (e.g., Blog Post Writer)"
+                                  className="flex-1 h-9 px-3 rounded-lg bg-neutral-900 border border-neutral-800 text-white text-sm placeholder:text-neutral-600 focus:border-violet-500/50 focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPromptRunnerText(p.content);
+                                    setPromptContext("");
+                                  }}
+                                  title="Load into test runner"
+                                  className="h-9 px-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-all"
+                                >
+                                  <Play className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPrompts(prev => prev.filter((_, i) => i !== idx))}
+                                  className="h-9 px-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <textarea
+                                value={p.content}
+                                onChange={(e) => setPrompts(prev => prev.map((x, i) => i === idx ? { ...x, content: e.target.value } : x))}
+                                placeholder="Paste your full prompt here..."
+                                rows={4}
+                                className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-white text-sm placeholder:text-neutral-600 focus:border-violet-500/50 focus:outline-none resize-none"
+                              />
+                              <p className="text-xs text-neutral-600 text-right">{p.content.length} chars</p>
+                            </div>
+                          ))
+                        )}
+
+                        {/* Test Runner */}
+                        <div className="pt-2 border-t border-neutral-800 space-y-3">
+                          <p className="text-xs font-medium text-neutral-400 flex items-center gap-1.5">
+                            <Play className="w-3.5 h-3.5 text-emerald-400" />
+                            Test Runner
+                            <span className="px-1.5 py-0.5 rounded-full text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">Powered by Gemini</span>
+                          </p>
+                          <input
+                            type="text"
+                            placeholder="Context / Role (optional)"
+                            value={promptContext}
+                            onChange={(e) => setPromptContext(e.target.value)}
+                            className="w-full h-9 px-3 rounded-lg bg-neutral-950 border border-neutral-800 text-white text-sm placeholder:text-neutral-600 focus:border-violet-500/50 focus:outline-none"
+                          />
+                          <textarea
+                            placeholder="Paste or load a prompt to test it..."
+                            value={promptRunnerText}
+                            onChange={(e) => setPromptRunnerText(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-800 text-white text-sm placeholder:text-neutral-600 focus:border-violet-500/50 focus:outline-none resize-none"
+                          />
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-neutral-600">{promptRunnerText.length}/4000</p>
+                            <button
+                              type="button"
+                              onClick={runPrompt}
+                              disabled={runningPrompt || !promptRunnerText.trim()}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {runningPrompt ? <><Loader2 className="w-4 h-4 animate-spin" /> Running...</> : <><Play className="w-4 h-4" /> Run</>}
+                            </button>
+                          </div>
+                          {promptError && (
+                            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                              <X className="w-4 h-4 shrink-0" />{promptError}
+                            </div>
+                          )}
+                          {promptRunnerOutput && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />Gemini Output
+                                </span>
+                                <button type="button" onClick={() => setPromptRunnerOutput("")} className="text-neutral-600 hover:text-neutral-400">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="p-4 rounded-xl bg-neutral-950 border border-emerald-500/20 text-sm text-neutral-200 whitespace-pre-wrap leading-relaxed max-h-[500px] overflow-y-auto">
+                                {promptRunnerOutput}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* ── Template Metadata Section ── */}
+                {isTemplate && (
+                  <div className="space-y-4">
+                    <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-white">
+                          <Palette className="w-4 h-4 text-pink-400" />
+                          Template Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        {/* Compatible Apps */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Compatible Apps / Tools</label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={compatibilityInput}
+                              onChange={(e) => setCompatibilityInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  const v = compatibilityInput.trim();
+                                  if (v && !templateCompatibility.includes(v)) setTemplateCompatibility(prev => [...prev, v]);
+                                  setCompatibilityInput("");
+                                }
+                              }}
+                              placeholder="e.g. Notion 2.0, Figma…"
+                              className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50"
+                            />
+                            <Button type="button" onClick={() => {
+                              const v = compatibilityInput.trim();
+                              if (v && !templateCompatibility.includes(v)) setTemplateCompatibility(prev => [...prev, v]);
+                              setCompatibilityInput("");
+                            }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {templateCompatibility.map(t => (
+                              <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-blue-500/10 border border-blue-500/30 text-blue-300">
+                                {t}<button type="button" onClick={() => setTemplateCompatibility(prev => prev.filter(x => x !== t))}><X className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Included Features</label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={featureInput}
+                              onChange={(e) => setFeatureInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  const v = featureInput.trim();
+                                  if (v && !templateFeatures.includes(v)) setTemplateFeatures(prev => [...prev, v]);
+                                  setFeatureInput("");
+                                }
+                              }}
+                              placeholder="e.g. Dark mode, Kanban board…"
+                              className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50"
+                            />
+                            <Button type="button" onClick={() => {
+                              const v = featureInput.trim();
+                              if (v && !templateFeatures.includes(v)) setTemplateFeatures(prev => [...prev, v]);
+                              setFeatureInput("");
+                            }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {templateFeatures.map(f => (
+                              <span key={f} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                                {f}<button type="button" onClick={() => setTemplateFeatures(prev => prev.filter(x => x !== f))}><X className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Customization Level */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Customization Level</label>
+                          <div className="flex gap-2">
+                            {(["low", "medium", "high"] as const).map(lvl => (
+                              <button
+                                key={lvl}
+                                type="button"
+                                onClick={() => setTemplateCustomization(lvl)}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${templateCustomization === lvl ? "bg-violet-500/20 border-violet-500/50 text-violet-200" : "bg-neutral-900 border-neutral-700 text-neutral-400 hover:border-neutral-600"}`}
+                              >
+                                {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Includes Assets */}
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input type="checkbox" checked={templateIncludesAssets} onChange={e => setTemplateIncludesAssets(e.target.checked)} className="w-4 h-4 accent-violet-500" />
+                          <span className="text-sm text-neutral-300">Includes design assets / source files</span>
+                        </label>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* ── Developer Boilerplate Section ── */}
+                {isDevBoilerplate && (
+                  <div className="space-y-4">
+                    <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-white">
+                          <Code2 className="w-4 h-4 text-yellow-400" />
+                          Developer Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        {/* Tech Stack */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Tech Stack</label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={techStackInput}
+                              onChange={(e) => setTechStackInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  const v = techStackInput.trim();
+                                  if (v && !techStack.includes(v)) setTechStack(prev => [...prev, v]);
+                                  setTechStackInput("");
+                                }
+                              }}
+                              placeholder="e.g. React, Node.js, MongoDB…"
+                              className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50"
+                            />
+                            <Button type="button" onClick={() => {
+                              const v = techStackInput.trim();
+                              if (v && !techStack.includes(v)) setTechStack(prev => [...prev, v]);
+                              setTechStackInput("");
+                            }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {techStack.map(t => (
+                              <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-yellow-500/10 border border-yellow-500/30 text-yellow-300">
+                                {t}<button type="button" onClick={() => setTechStack(prev => prev.filter(x => x !== t))}><X className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Architecture */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Architecture</label>
+                          <div className="flex flex-wrap gap-2">
+                            {(["mvc", "spa", "fullstack", "microservices", "serverless"] as const).map(arch => (
+                              <button
+                                key={arch}
+                                type="button"
+                                onClick={() => setArchitecture(arch)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${architecture === arch ? "bg-violet-500/20 border-violet-500/50 text-violet-200" : "bg-neutral-900 border-neutral-700 text-neutral-400 hover:border-neutral-600"}`}
+                              >
+                                {arch.toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Feature toggles */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Includes</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { state: devIncludesAuth, setter: setDevIncludesAuth, icon: <Lock className="w-3.5 h-3.5" />, label: "Authentication" },
+                              { state: devIncludesDatabase, setter: setDevIncludesDatabase, icon: <Database className="w-3.5 h-3.5" />, label: "Database Setup" },
+                              { state: devIncludesTesting, setter: setDevIncludesTesting, icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Tests / Test Suite" },
+                              { state: devDeploymentReady, setter: setDevDeploymentReady, icon: <Rocket className="w-3.5 h-3.5" />, label: "Deployment Ready" },
+                              { state: devDocumentation, setter: setDevDocumentation, icon: <BookOpen className="w-3.5 h-3.5" />, label: "Documentation" },
+                            ].map(({ state, setter, icon, label }) => (
+                              <label key={label} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${state ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-neutral-900 border-neutral-700 text-neutral-400"}`}>
+                                <input type="checkbox" checked={state} onChange={e => setter(e.target.checked)} className="w-3.5 h-3.5 accent-emerald-500 shrink-0" />
+                                <span className="flex items-center gap-1.5 text-xs font-medium">{icon}{label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* ── Workflow / Automation Section ── */}
+                {isWorkflow && (
+                  <div className="space-y-4">
+                    <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-white">
+                          <Zap className="w-4 h-4 text-amber-400" />
+                          Workflow Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        {/* Workflow Type */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Workflow Type</label>
+                          <select
+                            value={workflowType}
+                            onChange={e => setWorkflowType(e.target.value)}
+                            className="w-full h-10 px-3 bg-neutral-950 border border-neutral-800 rounded-lg text-white text-sm focus:border-violet-500/50"
+                          >
+                            <option value="">Select type</option>
+                            {["automation", "productivity", "business", "ai", "integration"].map(t => (
+                              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Steps + Time grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-neutral-400 flex items-center gap-1"><GitBranch className="w-3 h-3" /> Steps Count</label>
+                            <Input type="number" min={0} value={workflowSteps || ""} onChange={e => setWorkflowSteps(Number(e.target.value))} placeholder="0" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-neutral-400 flex items-center gap-1"><Clock className="w-3 h-3" /> Setup Time</label>
+                            <Input value={timeToImplement} onChange={e => setTimeToImplement(e.target.value)} placeholder="e.g. 30min, 2 hours" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                          </div>
+                        </div>
+
+                        {/* Tools */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300 flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Tools & Integrations</label>
+                          <div className="flex gap-2">
+                            <Input value={workflowToolInput} onChange={e => setWorkflowToolInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = workflowToolInput.trim(); if (v && !workflowTools.includes(v)) setWorkflowTools(prev => [...prev, v]); setWorkflowToolInput(""); }}} placeholder="e.g. Zapier, n8n, Make…" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                            <Button type="button" onClick={() => { const v = workflowToolInput.trim(); if (v && !workflowTools.includes(v)) setWorkflowTools(prev => [...prev, v]); setWorkflowToolInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {workflowTools.map(t => (
+                              <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-amber-500/10 border border-amber-500/30 text-amber-300">
+                                {t}<button type="button" onClick={() => setWorkflowTools(prev => prev.filter(x => x !== t))}><X className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Platforms */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300 flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Platforms</label>
+                          <div className="flex gap-2">
+                            <Input value={platformInput} onChange={e => setPlatformInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = platformInput.trim(); if (v && !workflowPlatforms.includes(v)) setWorkflowPlatforms(prev => [...prev, v]); setPlatformInput(""); }}} placeholder="e.g. Web, Mobile, Desktop" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                            <Button type="button" onClick={() => { const v = platformInput.trim(); if (v && !workflowPlatforms.includes(v)) setWorkflowPlatforms(prev => [...prev, v]); setPlatformInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {workflowPlatforms.map(p => (
+                              <span key={p} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+                                {p}<button type="button" onClick={() => setWorkflowPlatforms(prev => prev.filter(x => x !== p))}><X className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Integration Level */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-neutral-300">Integration Complexity</label>
+                          <div className="flex gap-2">
+                            {["basic", "intermediate", "advanced"].map(lvl => (
+                              <button key={lvl} type="button" onClick={() => setIntegrationLevel(lvl)} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${integrationLevel === lvl ? "bg-violet-500/20 border-violet-500/50 text-violet-200" : "bg-neutral-900 border-neutral-700 text-neutral-400 hover:border-neutral-600"}`}>
+                                {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* ── Guide / Framework Section ── */}
+                {(isGuide || isFramework) && (
+                  <div className="space-y-4">
+                    <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-white">
+                          <BookOpen className="w-4 h-4 text-blue-400" />
+                          {isFramework ? "Framework Details" : "Guide Details"}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        {isGuide && (
+                          <>
+                            {/* Complexity */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300">Difficulty Level</label>
+                              <div className="flex gap-2">
+                                {(["beginner", "intermediate", "advanced"] as const).map(lvl => (
+                                  <button key={lvl} type="button" onClick={() => setGuideComplexity(lvl)} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${guideComplexity === lvl ? "bg-violet-500/20 border-violet-500/50 text-violet-200" : "bg-neutral-900 border-neutral-700 text-neutral-400 hover:border-neutral-600"}`}>
+                                    {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Estimated Time */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Estimated Completion Time</label>
+                              <Input value={guideTime} onChange={e => setGuideTime(e.target.value)} placeholder="e.g. 2 hours, 1 week" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                            </div>
+
+                            {/* Prerequisites */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300">Prerequisites</label>
+                              <div className="flex gap-2">
+                                <Input value={prereqInput} onChange={e => setPrereqInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = prereqInput.trim(); if (v && !guidePrerequisites.includes(v)) setGuidePrerequisites(prev => [...prev, v]); setPrereqInput(""); }}} placeholder="e.g. Basic JavaScript knowledge" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                                <Button type="button" onClick={() => { const v = prereqInput.trim(); if (v && !guidePrerequisites.includes(v)) setGuidePrerequisites(prev => [...prev, v]); setPrereqInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {guidePrerequisites.map(p => (
+                                  <span key={p} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-neutral-800 border border-neutral-700 text-neutral-300">
+                                    {p}<button type="button" onClick={() => setGuidePrerequisites(prev => prev.filter(x => x !== p))}><X className="w-3 h-3" /></button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Tools Required */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300 flex items-center gap-1.5"><Wrench className="w-3.5 h-3.5" /> Tools Required</label>
+                              <div className="flex gap-2">
+                                <Input value={guideToolInput} onChange={e => setGuideToolInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = guideToolInput.trim(); if (v && !guideTools.includes(v)) setGuideTools(prev => [...prev, v]); setGuideToolInput(""); }}} placeholder="e.g. VS Code, Docker" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                                <Button type="button" onClick={() => { const v = guideToolInput.trim(); if (v && !guideTools.includes(v)) setGuideTools(prev => [...prev, v]); setGuideToolInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {guideTools.map(t => (
+                                  <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-blue-500/10 border border-blue-500/30 text-blue-300">
+                                    {t}<button type="button" onClick={() => setGuideTools(prev => prev.filter(x => x !== t))}><X className="w-3 h-3" /></button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Outcomes */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300">What Buyers Will Achieve</label>
+                              <div className="flex gap-2">
+                                <Input value={outcomeInput} onChange={e => setOutcomeInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = outcomeInput.trim(); if (v && !guideOutcomes.includes(v)) setGuideOutcomes(prev => [...prev, v]); setOutcomeInput(""); }}} placeholder="e.g. Build a full-stack app" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                                <Button type="button" onClick={() => { const v = outcomeInput.trim(); if (v && !guideOutcomes.includes(v)) setGuideOutcomes(prev => [...prev, v]); setOutcomeInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {guideOutcomes.map(o => (
+                                  <span key={o} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                                    {o}<button type="button" onClick={() => setGuideOutcomes(prev => prev.filter(x => x !== o))}><X className="w-3 h-3" /></button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input type="checkbox" checked={guideIncludesTemplates} onChange={e => setGuideIncludesTemplates(e.target.checked)} className="w-4 h-4 accent-violet-500" />
+                              <span className="text-sm text-neutral-300">Includes ready-to-use templates</span>
+                            </label>
+                          </>
+                        )}
+
+                        {isFramework && (
+                          <>
+                            {/* Methodology */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300">Methodology</label>
+                              <Input value={frameworkMethodology} onChange={e => setFrameworkMethodology(e.target.value)} placeholder="e.g. GTD, PARA, OKR, Agile" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                            </div>
+
+                            {/* Scalability */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Designed For</label>
+                              <div className="flex gap-2">
+                                {["personal", "team", "enterprise"].map(s => (
+                                  <button key={s} type="button" onClick={() => setFrameworkScalability(s)} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${frameworkScalability === s ? "bg-violet-500/20 border-violet-500/50 text-violet-200" : "bg-neutral-900 border-neutral-700 text-neutral-400 hover:border-neutral-600"}`}>
+                                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Components */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300">Framework Components</label>
+                              <div className="flex gap-2">
+                                <Input value={frameworkComponentInput} onChange={e => setFrameworkComponentInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = frameworkComponentInput.trim(); if (v && !frameworkComponents.includes(v)) setFrameworkComponents(prev => [...prev, v]); setFrameworkComponentInput(""); }}} placeholder="e.g. Weekly Review, Goal Tracker" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                                <Button type="button" onClick={() => { const v = frameworkComponentInput.trim(); if (v && !frameworkComponents.includes(v)) setFrameworkComponents(prev => [...prev, v]); setFrameworkComponentInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {frameworkComponents.map(c => (
+                                  <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                                    {c}<button type="button" onClick={() => setFrameworkComponents(prev => prev.filter(x => x !== c))}><X className="w-3 h-3" /></button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Integrations */}
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-neutral-300">Tool Integrations</label>
+                              <div className="flex gap-2">
+                                <Input value={frameworkIntegrationInput} onChange={e => setFrameworkIntegrationInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); const v = frameworkIntegrationInput.trim(); if (v && !frameworkIntegrations.includes(v)) setFrameworkIntegrations(prev => [...prev, v]); setFrameworkIntegrationInput(""); }}} placeholder="e.g. Notion, Todoist, Google Cal" className="h-10 bg-neutral-950 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-violet-500/50" />
+                                <Button type="button" onClick={() => { const v = frameworkIntegrationInput.trim(); if (v && !frameworkIntegrations.includes(v)) setFrameworkIntegrations(prev => [...prev, v]); setFrameworkIntegrationInput(""); }} className="h-10 bg-neutral-800/50 border border-neutral-700 text-white"><Plus className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {frameworkIntegrations.map(i => (
+                                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-blue-500/10 border border-blue-500/30 text-blue-300">
+                                    {i}<button type="button" onClick={() => setFrameworkIntegrations(prev => prev.filter(x => x !== i))}><X className="w-3 h-3" /></button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2.5">
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" checked={frameworkIncludesTemplates} onChange={e => setFrameworkIncludesTemplates(e.target.checked)} className="w-4 h-4 accent-violet-500" />
+                                <span className="text-sm text-neutral-300">Includes ready-to-use templates</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" checked={frameworkIncludesWorkflows} onChange={e => setFrameworkIncludesWorkflows(e.target.checked)} className="w-4 h-4 accent-violet-500" />
+                                <span className="text-sm text-neutral-300">Includes pre-built workflows</span>
+                              </label>
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
                 {/* AI Insights - Above Deliverables */}
                 <AIDashboard
                   productId={productId}
@@ -765,113 +1678,6 @@ function EditPanelRedesigned({
                   deliverables={product.deliverables || []}
                 />
 
-                {/* Deliverables Section - Only Code and PDF */}
-                <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2 text-white">
-                      <Layers className="w-5 h-5 text-violet-400" />
-                      Document Deliverables
-                    </CardTitle>
-                    <Button
-                      type="button"
-                      onClick={() => setDeliverables(d => [...d, { label: "", url: "", kind: "code" }])}
-                      className="bg-neutral-800/50 backdrop-blur-sm border border-neutral-700 hover:bg-neutral-700/50 hover:border-violet-500/50 text-white transition-all"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Deliverable
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {deliverables.filter(d => d.kind === "code" || d.kind === "file").length === 0 ? (
-                      <div className="text-center py-8 text-neutral-400">
-                        <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>No deliverables yet.</p>
-                        <p className="text-sm">Add code or PDF resources.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {deliverables
-                          .filter(d => d.kind === "code" || d.kind === "file")
-                          .map((d, idx) => (
-                          <div key={`del-${idx}`} className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-3">
-                            <div className="grid gap-3 md:grid-cols-3">
-                              <Input
-                                value={d.label}
-                                onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
-                                placeholder="Label (e.g., Notion link)"
-                                className="bg-neutral-900 border-neutral-800 text-white"
-                              />
-                              {d.kind === "file" ? (
-                                <div className="md:col-span-2 flex gap-2">
-                                  <Input
-                                    value={d.url}
-                                    readOnly
-                                    placeholder={uploadingFile === idx ? "Uploading..." : "No file uploaded"}
-                                    className="flex-1 bg-neutral-900 border-neutral-800 text-white"
-                                  />
-                                  <label className="cursor-pointer">
-                                    <input
-                                      type="file"
-                                      accept=".pdf"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-                                            toast.error('Only PDF files are allowed');
-                                            return;
-                                          }
-                                          handleFileUpload(idx, file);
-                                        }
-                                      }}
-                                      disabled={uploadingFile === idx}
-                                    />
-                                    <Button
-                                      type="button"
-                                      disabled={uploadingFile === idx}
-                                      className="bg-neutral-800/50 backdrop-blur-sm border border-neutral-700 hover:bg-neutral-700/50 text-white transition-all"
-                                      asChild
-                                    >
-                                      <span>
-                                        <Upload className="w-4 h-4 mr-2" />
-                                        {uploadingFile === idx ? "Uploading..." : "Upload PDF"}
-                                      </span>
-                                    </Button>
-                                  </label>
-                                </div>
-                              ) : (
-                                <Input
-                                  value={d.url}
-                                  onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, url: e.target.value } : x))}
-                                  placeholder={d.kind === "code" ? "Code content or URL..." : "URL"}
-                                  className="md:col-span-2 bg-neutral-900 border-neutral-800 text-white"
-                                />
-                              )}
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <select
-                                value={d.kind}
-                                onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, kind: e.target.value as any } : x))}
-                                className="h-10 px-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white"
-                              >
-                                <option value="code">Code</option>
-                                <option value="file">PDF File</option>
-                              </select>
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => setDeliverables(prev => prev.filter((_, i) => i !== idx))}
-                                className="bg-red-500/10 backdrop-blur-sm border border-red-500/30 hover:bg-red-500/20 text-red-400 transition-all"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
               </motion.div>
             )}
 
@@ -1222,6 +2028,121 @@ function EditPanelRedesigned({
                 onAction={(asset) => setCover(asset._id)}
                 onRemove={(asset) => removeAsset(asset)}
               />
+            </CardContent>
+          </Card>
+
+          {/* Document Deliverables */}
+          <Card className="bg-neutral-900/50 border-neutral-800 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2 text-white">
+                <Layers className="w-5 h-5 text-violet-400" />
+                Document Deliverables
+              </CardTitle>
+              <Button
+                type="button"
+                onClick={() => setDeliverables(d => [...d, { label: "", url: "", kind: isTemplate || isWorkflow || isGuide || isFramework ? "link" : "code" }])}
+                className="bg-neutral-800/50 backdrop-blur-sm border border-neutral-700 hover:bg-neutral-700/50 hover:border-violet-500/50 text-white transition-all"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Deliverable
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {deliverables.length === 0 ? (
+                <div className="text-center py-8 text-neutral-400">
+                  <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No deliverables yet.</p>
+                  <p className="text-sm">{isTemplate || isWorkflow || isGuide || isFramework ? "Add links, PDFs or files." : "Add code or PDF resources."}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {deliverables
+                    .map((d, idx) => (
+                    <div key={`del-${idx}`} className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-3">
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Input
+                          value={d.label}
+                          onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
+                          placeholder="Label (e.g., Notion link)"
+                          className="bg-neutral-900 border-neutral-800 text-white"
+                        />
+                        {d.kind === "link" ? (
+                          <Input
+                            value={d.url}
+                            onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, url: e.target.value } : x))}
+                            placeholder="https://notion.so/your-template..."
+                            className="md:col-span-2 bg-neutral-900 border-neutral-800 text-white"
+                          />
+                        ) : d.kind === "file" ? (
+                          <div className="md:col-span-2 flex gap-2">
+                            <Input
+                              value={d.url}
+                              readOnly
+                              placeholder={uploadingFile === idx ? "Uploading..." : "No file uploaded"}
+                              className="flex-1 bg-neutral-900 border-neutral-800 text-white"
+                            />
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+                                      toast.error('Only PDF files are allowed');
+                                      return;
+                                    }
+                                    handleFileUpload(idx, file);
+                                  }
+                                }}
+                                disabled={uploadingFile === idx}
+                              />
+                              <Button
+                                type="button"
+                                disabled={uploadingFile === idx}
+                                className="bg-neutral-800/50 backdrop-blur-sm border border-neutral-700 hover:bg-neutral-700/50 text-white transition-all"
+                                asChild
+                              >
+                                <span>
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  {uploadingFile === idx ? "Uploading..." : "Upload PDF"}
+                                </span>
+                              </Button>
+                            </label>
+                          </div>
+                        ) : (
+                          <Input
+                            value={d.url}
+                            onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, url: e.target.value } : x))}
+                            placeholder="Code content or URL..."
+                            className="md:col-span-2 bg-neutral-900 border-neutral-800 text-white"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <select
+                          value={d.kind}
+                          onChange={(e) => setDeliverables(prev => prev.map((x, i) => i === idx ? { ...x, kind: e.target.value as any } : x))}
+                          className="h-10 px-3 bg-neutral-900 border border-neutral-800 rounded-lg text-white"
+                        >
+                          <option value="link">Link (URL)</option>
+                          <option value="code">Code</option>
+                          <option value="file">PDF File</option>
+                        </select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setDeliverables(prev => prev.filter((_, i) => i !== idx))}
+                          className="bg-red-500/10 backdrop-blur-sm border border-red-500/30 hover:bg-red-500/20 text-red-400 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { AuthedRequest, requireAuth } from "../middleware/requireAuth";
 import { z } from "zod";
 import { AIIntelligenceEngine } from "../lib/ai-intelligence";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const aiRouter = Router();
 

@@ -12,6 +12,11 @@ import { BuyerAIInsights } from "./buyer-ai-insights";
 import CodeTemplatePreview from "@/components/ui/code-template-preview";
 import { BackgroundBeams } from "@/components/ui/background-beams";
 import { Package, Sparkles, Calendar, Eye, ShoppingCart, Star } from "lucide-react";
+import { AiPromptPackSection } from "./ai-prompt-pack-section";
+import { TemplateSectionDetails } from "./template-section";
+import { DevBoilerplateSection } from "./dev-boilerplate-section";
+import { WorkflowSection } from "./workflow-section";
+import { GuideSection } from "./guide-section";
 import { ReviewSection } from "@/components/reviews/review-section";
 
 type ProductDetailRes = {
@@ -52,6 +57,54 @@ type ProductDetailRes = {
         content: string;
         language: string;
       }>;
+    };
+    aiPromptPack?: {
+      supportedModels?: string[];
+      categories?: string[];
+      difficulty?: string;
+      prompts?: Array<{ label: string }>;
+    };
+    template?: {
+      compatibility?: string[];
+      features?: string[];
+      customizationLevel?: "low" | "medium" | "high";
+      includesAssets?: boolean;
+    };
+    developerBoilerplate?: {
+      techStack?: string[];
+      architecture?: string;
+      includesAuth?: boolean;
+      includesDatabase?: boolean;
+      includesTesting?: boolean;
+      deploymentReady?: boolean;
+      documentation?: boolean;
+      starterType?: string;
+    };
+    workflowSystem?: {
+      workflowType?: string;
+      stepsCount?: number;
+      tools?: string[];
+      integrationLevel?: "basic" | "intermediate" | "advanced";
+      timeToImplement?: string;
+      platforms?: string[];
+    };
+    automationGuide?: {
+      guideType?: string;
+      complexity?: "beginner" | "intermediate" | "advanced";
+      prerequisites?: string[];
+      toolsRequired?: string[];
+      estimatedTime?: string;
+      outcomes?: string[];
+      includesTemplates?: boolean;
+    };
+    productivityFramework?: {
+      frameworkType?: string;
+      methodology?: string;
+      components?: string[];
+      integrations?: string[];
+      scalability?: "personal" | "team" | "enterprise";
+      includesTemplates?: boolean;
+      includesWorkflows?: boolean;
     };
   };
   error?: string;
@@ -227,14 +280,14 @@ export default async function DiscoverDetailsPage({
                         ₹{productInfo.price}
                       </div>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-gradient-to-r from-violet-600 to-pink-600 text-white text-xs font-medium">
+                    <div className="px-3 py-1 rounded-full backdrop-blur-md bg-violet-500/15 border border-violet-500/30 text-violet-300 text-xs font-medium shadow-sm shadow-violet-500/20">
                       Premium
                     </div>
                   </div>
                   
                   <div className="mt-4 space-y-3">
                     {!me.ok ? (
-                      <Button asChild className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 text-white font-semibold shadow-lg shadow-violet-500/25 transition-all">
+                      <Button asChild className="w-full h-12 rounded-xl backdrop-blur-md bg-violet-500/20 border border-violet-500/40 text-violet-200 hover:bg-violet-500/30 hover:border-violet-400/60 font-semibold shadow-lg shadow-violet-500/20 transition-all duration-200">
                         <Link href="/login">Login To Buy</Link>
                       </Button>
                     ) : isOwner ? (
@@ -244,7 +297,7 @@ export default async function DiscoverDetailsPage({
                     ) : libraryItems.filter(
                         (item) => item.productId === productInfo._id
                       ).length ? (
-                      <Button className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/25 transition-all cursor-pointer">
+                      <Button className="w-full h-12 rounded-xl backdrop-blur-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-500/30 hover:border-emerald-400/60 font-semibold shadow-lg shadow-emerald-500/20 transition-all duration-200 cursor-pointer">
                         Purchased {formatDate(
                           libraryItems.find(
                             (item) => item.productId === productInfo._id
@@ -254,7 +307,7 @@ export default async function DiscoverDetailsPage({
                     ) : (
                       <div className="space-y-3">
                         <BuyNewButton productId={productInfo._id} />
-                        <Button asChild variant="outline" className="w-full h-12 rounded-xl border-neutral-700 bg-neutral-800/50 hover:bg-neutral-700 text-white">
+                        <Button asChild variant="outline" className="w-full h-12 rounded-xl backdrop-blur-md bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:border-white/20 hover:text-white transition-all duration-200">
                           <Link href={`/discover/${slug}/images`}>
                             View All Images
                           </Link>
@@ -263,6 +316,51 @@ export default async function DiscoverDetailsPage({
                     )}
                   </div>
                 </div>
+
+                {/* AI Prompt Pack Section */}
+                {productInfo.category === "ai-prompt-pack" && (
+                  <AiPromptPackSection
+                    productId={productInfo._id}
+                    aiPromptPack={productInfo.aiPromptPack}
+                    isPurchased={libraryItems.some(item => item.productId === productInfo._id)}
+                  />
+                )}
+
+                {/* Template Section */}
+                {["notion-template", "resume-template", "ui-kit", "figma-assets", "productivity-dashboard"].includes(productInfo.category ?? "") && (
+                  <TemplateSectionDetails
+                    category={productInfo.category!}
+                    template={productInfo.template}
+                  />
+                )}
+
+                {/* Developer Boilerplate / Code Template Section */}
+                {["dev-boilerplate", "mern-starter", "auth-system", "saas-starter", "api-scaffold",
+                  "react-template", "vue-template", "angular-template",
+                  "javascript-component", "typescript-component", "css-template", "html-template"
+                ].includes(productInfo.category ?? "") && (
+                  <DevBoilerplateSection
+                    category={productInfo.category!}
+                    developerBoilerplate={productInfo.developerBoilerplate}
+                  />
+                )}
+
+                {/* Workflow / Automation Section */}
+                {["workflow-system", "automation-pipeline", "ai-productivity"].includes(productInfo.category ?? "") && (
+                  <WorkflowSection
+                    category={productInfo.category!}
+                    workflowSystem={productInfo.workflowSystem}
+                  />
+                )}
+
+                {/* Guide / Framework Section */}
+                {["business-guide", "automation-guide", "productivity-framework"].includes(productInfo.category ?? "") && (
+                  <GuideSection
+                    category={productInfo.category!}
+                    automationGuide={productInfo.automationGuide}
+                    productivityFramework={productInfo.productivityFramework}
+                  />
+                )}
 
                 {/* Code Preview for Code Templates */}
                 {productInfo.codeTemplate && (
@@ -274,28 +372,29 @@ export default async function DiscoverDetailsPage({
                   </div>
                 )}
 
-                {/* AI Insights - Below Pricing */}
-                <div className="max-h-[50vh] overflow-hidden rounded-2xl border border-neutral-800/50 bg-neutral-900/50 backdrop-blur-sm">
-                  <BuyerAIInsights product={productInfo} />
-                </div>
-
-                {/* Reviews Section */}
-                <div className="space-y-4">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-400" />
-                    Reviews & Ratings
-                  </h2>
-                  <ReviewSection
-                    productId={productInfo._id}
-                    userId={me.ok && me.user ? me.user.id : undefined}
-                    isLoggedIn={me.ok}
-                    hasPurchased={libraryItems.some(item => item.productId === productInfo._id)}
-                    isOwner={isOwner}
-                    averageRating={productInfo.stats?.averageRating || 0}
-                    reviewCount={productInfo.stats?.reviewCount || 0}
-                  />
-                </div>
               </div>
+            </div>
+
+            {/* Full-width AI Insights Section */}
+            <div className="pb-6">
+              <BuyerAIInsights product={productInfo} />
+            </div>
+
+            {/* Full-width Reviews Section */}
+            <div className="space-y-4 pb-8">
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                <Star className="w-5 h-5 text-yellow-400" />
+                Reviews & Ratings
+              </h2>
+              <ReviewSection
+                productId={productInfo._id}
+                userId={me.ok && me.user ? me.user.id : undefined}
+                isLoggedIn={me.ok}
+                hasPurchased={libraryItems.some(item => item.productId === productInfo._id)}
+                isOwner={isOwner}
+                averageRating={productInfo.stats?.averageRating || 0}
+                reviewCount={productInfo.stats?.reviewCount || 0}
+              />
             </div>
           </div>
         </div>

@@ -617,6 +617,57 @@ creatorProductRouter.patch("/:productId", async (req: AuthedRequest, res) => {
       product.markModified('template');
     }
 
+    // Update tags
+    if (req.body.tags !== undefined && Array.isArray(req.body.tags)) {
+      (product as any).tags = req.body.tags;
+      product.markModified('tags');
+    }
+
+    // Update aiPromptPack metadata
+    if (req.body.aiPromptPack !== undefined && typeof req.body.aiPromptPack === 'object') {
+      (product as any).aiPromptPack = {
+        ...((product as any).aiPromptPack || {}),
+        ...req.body.aiPromptPack,
+      };
+      product.markModified('aiPromptPack');
+    }
+
+    // Update developerBoilerplate metadata
+    if (req.body.developerBoilerplate !== undefined && typeof req.body.developerBoilerplate === 'object') {
+      (product as any).developerBoilerplate = {
+        ...((product as any).developerBoilerplate || {}),
+        ...req.body.developerBoilerplate,
+      };
+      product.markModified('developerBoilerplate');
+    }
+
+    // Update workflowSystem metadata
+    if (req.body.workflowSystem !== undefined && typeof req.body.workflowSystem === 'object') {
+      (product as any).workflowSystem = {
+        ...((product as any).workflowSystem || {}),
+        ...req.body.workflowSystem,
+      };
+      product.markModified('workflowSystem');
+    }
+
+    // Update automationGuide metadata
+    if (req.body.automationGuide !== undefined && typeof req.body.automationGuide === 'object') {
+      (product as any).automationGuide = {
+        ...((product as any).automationGuide || {}),
+        ...req.body.automationGuide,
+      };
+      product.markModified('automationGuide');
+    }
+
+    // Update productivityFramework metadata
+    if (req.body.productivityFramework !== undefined && typeof req.body.productivityFramework === 'object') {
+      (product as any).productivityFramework = {
+        ...((product as any).productivityFramework || {}),
+        ...req.body.productivityFramework,
+      };
+      product.markModified('productivityFramework');
+    }
+
     await product.save();
 
     return res.json({ ok: true, product });

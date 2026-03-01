@@ -6,8 +6,27 @@ import BuyerSell from "@/components/buyer/common/buyer-shell";
 import { BackgroundLines } from "@/components/ui/background-lines";
 import { HomeProfileButton } from "./home-profile-button";
 import { getMe } from "@/lib/auth/getMe";
+import { apiServerGet } from "@/lib/api/server";
 
 import Link from "next/link";
+
+type PublicProduct = {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  price?: number;
+  category?: string;
+  coverUrl: string | null;
+  allImageUrls: string[];
+  stats?: {
+    averageRating: number;
+    reviewCount: number;
+    soldCount: number;
+    viewCount: number;
+  };
+  tags?: string[];
+};
 
 export default async function Home() {
   const me = await getMe();
@@ -18,7 +37,31 @@ export default async function Home() {
     photo: (me.user as any).photo,
     isCreator: me.user.isCreator,
   } : null;
-  
+
+  let parallaxProducts: { title: string; link: string; thumbnail: string }[] = [];
+  try {
+    const res = await apiServerGet<{ ok: boolean; products: PublicProduct[] }>("/api/products");
+    if (res.ok && res.products.length > 0) {
+      parallaxProducts = res.products
+        .filter((p) => p.coverUrl || (p.allImageUrls && p.allImageUrls.length > 0))
+        .slice(0, 15)
+        .map((p) => ({
+          title: p.title,
+          link: `/discover/${p.slug}`,
+          thumbnail: p.coverUrl || p.allImageUrls[0],
+          price: p.price,
+          category: p.category,
+          description: p.description,
+          averageRating: p.stats?.averageRating,
+          reviewCount: p.stats?.reviewCount,
+          soldCount: p.stats?.soldCount,
+          tags: p.tags,
+        }));
+    }
+  } catch {
+    // silently fall through — parallaxProducts stays empty and section is hidden
+  }
+
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
 
@@ -93,9 +136,11 @@ export default async function Home() {
         <div className="sm:flex flex-row h-20 w-full items-center justify-evenly m-10 hidden ">
           <GlareCardDemo text="Hello 1" />
         </div>
-        <div className="p-5 hidden sm:block">
-          <HeroParallaxDemo />
-        </div>
+        {parallaxProducts.length > 0 && (
+          <div className="p-5 hidden sm:block">
+            <HeroParallaxDemo products={parallaxProducts} />
+          </div>
+        )}
        
 
         {/* New Footer with Social Links */}
