@@ -1,27 +1,13 @@
 require("dotenv/config");
 
-// Simple check if dist exists, if not try to build
-const fs = require('fs');
-const path = require('path');
-
-const distPath = path.join(__dirname, '../dist');
-const appPath = path.join(distPath, 'app.js');
-const dbPath = path.join(distPath, 'db.js');
-
-// If dist doesn't exist, try to create it
-if (!fs.existsSync(distPath)) {
-  console.log('Dist folder not found, creating it...');
-  fs.mkdirSync(distPath, { recursive: true });
-}
-
 let cachedApp = null;
 let cachedConnection = false;
 
 module.exports = async function handler(req, res) {
   try {
-    // Try to require the modules
-    const { createApp } = require(appPath);
-    const { connectMongo } = require(dbPath);
+    // Try to require the compiled modules
+    const { createApp } = require("../dist/app");
+    const { connectMongo } = require("../dist/db");
     
     if (!cachedConnection) {
       await connectMongo();
@@ -40,8 +26,8 @@ module.exports = async function handler(req, res) {
     if (error.message.includes('Cannot find module')) {
       return res.status(500).json({ 
         error: "Build Error", 
-        message: "TypeScript compilation failed. Please check the build logs.",
-        details: error.message 
+        message: "TypeScript compilation failed. The dist folder was not created.",
+        details: "Please check that the build step ran successfully in Vercel."
       });
     }
     
