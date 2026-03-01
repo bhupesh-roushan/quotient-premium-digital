@@ -235,36 +235,7 @@ export class AIIntelligenceEngine {
   }
 
   private generateFallback<T>(schema: z.ZodSchema<T>): T {
-    const schemaName = schema._def.typeName || schema.constructor.name;
-    if (schemaName === "ZodObject") {
-      // Check by parsing a sample object to identify schema type
-      try {
-        const sample = schema.safeParse({});
-        if (sample.success && 'competitorCount' in sample.data) {
-          return { competitorCount: 0, avgPrice: 75, commonFeatures: ["Standard features"], marketGaps: ["Premium features"], pricingRecommendation: { min: 50, max: 150, optimal: 95, reasoning: "Based on market standards." } } as T;
-        }
-        if (sample.success && 'marketAverage' in sample.data) {
-          return { marketAverage: 80, priceRange: { min: 40, max: 200, median: 75 }, positioning: "medium", recommendation: "Standard market range." } as T;
-        }
-        if (sample.success && 'title' in sample.data && 'keywords' in sample.data) {
-          return { title: "Product Title", description: "Description here", keywords: ["product", "digital"], metaDescription: "Meta desc", faqSchema: [{ question: "Q?", answer: "A." }], tags: ["digital"] } as T;
-        }
-        if (sample.success && 'optimized' in sample.data && 'tone' in sample.data) {
-          return { optimized: "Optimized description", shortVersion: "Short version", bulletPoints: ["Point 1"], tone: "professional" } as T;
-        }
-        if (sample.success && 'trendingTags' in sample.data) {
-          return { trendingTags: ["AI", "Automation"], marketSaturation: "medium", opportunityScore: 70, emergingTopics: ["AI"] } as T;
-        }
-        if (sample.success && 'optimizationScore' in sample.data) {
-          return { optimizationScore: 65, titleAnalysis: { length: "good", clarity: "good" }, descriptionAnalysis: { depth: "good", clarity: "good" }, featureAnalysis: { count: "good", clarity: "good" }, pricingAnalysis: { competitiveness: "good", reasoning: "Standard" }, recommendations: ["Add more details"] } as T;
-        }
-        if (sample.success && 'valueAnalysis' in sample.data) {
-          return { valueAnalysis: { score: 70, strengths: ["Good"], considerations: ["Limited"], priceComparison: "Fair" }, qualityAssessment: { overallRating: "Good", features: ["Core"], benefits: ["Saves time"], completeness: "Complete" }, useCases: { primary: ["Professional"], secondary: ["Personal"], targetAudience: ["Pros"] }, recommendation: { shouldBuy: true, confidence: 75, reasoning: "Good value.", alternatives: ["Similar"] } } as T;
-        }
-      } catch {
-        // Fall through to default
-      }
-    }
+    // Return a generic fallback - let the calling methods handle specific fallbacks
     return {} as T;
   }
 
