@@ -1,6 +1,6 @@
 require("dotenv/config");
-const { createApp } = require("../dist/app");
-const { connectMongo } = require("../dist/db");
+const { createApp } = require("../app.js");
+const { connectMongo } = require("../db.js");
 
 let cachedApp = null;
 let cachedConnection = false;
