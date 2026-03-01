@@ -492,8 +492,8 @@ function EditPanelRedesigned({
     setComponentDeliverables(updatedDeliverables);
     // Sync with main deliverables - convert ComponentDeliverable to Deliverable format
     const codeDeliverables = updatedDeliverables.map(cd => ({
-      label: cd.label || cd.fileName || "Code File",
-      url: cd.downloadUrl || cd.sourceCode || "",
+      label: cd.name || "Code File",
+      url: cd.previewUrl || "",
       kind: "code" as const
     }));
     
