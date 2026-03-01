@@ -170,6 +170,10 @@ authRouter.post("/logout", async (req, res) => {
  */
 authRouter.get("/me", requireAuth, async (req: AuthedRequest, res) => {
   try {
+    console.log("=== /API/AUTH/ME DEBUG ===");
+    console.log("User authenticated successfully:", req.user);
+    console.log("=== END /API/AUTH/ME DEBUG ===");
+    
     return res.json({ ok: true, user: req.user });
   } catch (err) {
     console.log(err);
