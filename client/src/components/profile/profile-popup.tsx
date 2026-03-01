@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, User, Mail, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
