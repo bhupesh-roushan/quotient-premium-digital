@@ -1,4 +1,4 @@
-import { fileTypeFromBuffer } from "file-type";
+import mime from "mime-types";
 import sharp from "sharp";
 
 export async function downloadAndInspectImage(url: string) {
@@ -18,20 +18,23 @@ export async function downloadAndInspectImage(url: string) {
       throw new Error("Image too large");
     }
 
-    const extractFileType = await fileTypeFromBuffer(buffer);
-    if (!extractFileType) throw new Error("unknown file type");
-    if (!extractFileType.mime.startsWith("image/"))
+    // Get content type from response headers or guess from URL
+    const contentType = res.headers.get('content-type') || mime.lookup(url) || 'application/octet-stream';
+    
+    if (!contentType.startsWith("image/"))
       throw new Error("Not an image");
 
     const meta = await sharp(buffer).metadata();
     const width = meta.width ?? 0;
     const height = meta.height ?? 0;
 
-    const fileName = `img_${Date.now()}.${extractFileType.ext}`;
+    // Get file extension from mime type
+    const ext = mime.extension(contentType) || 'jpg';
+    const fileName = `img_${Date.now()}.${ext}`;
 
     return {
       buffer,
-      contentType: extractFileType.mime,
+      contentType,
       sizeBytes: buffer.length,
       width,
       height,
