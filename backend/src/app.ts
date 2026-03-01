@@ -31,7 +31,12 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: process.env.FRONTEND_ORIGIN,
+      origin: [
+        "https://quotient-premium-digital.vercel.app",
+        "http://quotient-premium-digital.vercel.app",
+        "http://localhost:3000",
+        "https://localhost:3000"
+      ],
       credentials: true,
     })
   );
