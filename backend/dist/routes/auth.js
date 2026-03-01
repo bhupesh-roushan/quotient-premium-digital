@@ -101,6 +101,7 @@ exports.authRouter.post("/login", async (req, res) => {
             sameSite: "lax",
             secure: true,
             path: "/",
+            domain: ".vercel.app",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
         console.log("Cookie set successfully");
@@ -135,6 +136,7 @@ exports.authRouter.post("/logout", async (req, res) => {
             httpOnly: true,
             sameSite: "lax",
             secure: true,
+            domain: ".vercel.app",
         });
         console.log("Cookie cleared, sending response");
         return res.json({ ok: true, message: "Logged out successfully" });
