@@ -8,7 +8,6 @@ export const aiRouter = Router();
 
 // Initialize AI Engine
 const aiEngine = new AIIntelligenceEngine({
-  firecrawlApiKey: process.env.FIRECRAWL_API_KEY || "",
   geminiApiKey: process.env.GEMINI_API_KEY || "",
 });
 
