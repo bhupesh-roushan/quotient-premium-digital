@@ -92,7 +92,7 @@ exports.authRouter.post("/login", async (req, res) => {
         res.cookie(process.env.COOKIE_NAME, token, {
             httpOnly: true,
             sameSite: "lax",
-            secure: false,
+            secure: true,
             path: "/",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
@@ -126,7 +126,7 @@ exports.authRouter.post("/logout", async (req, res) => {
         res.clearCookie(process.env.COOKIE_NAME, {
             httpOnly: true,
             sameSite: "lax",
-            secure: false,
+            secure: true,
         });
         console.log("Cookie cleared, sending response");
         return res.json({ ok: true, message: "Logged out successfully" });
