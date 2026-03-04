@@ -101,9 +101,12 @@ module.exports = async function handler(req, res) {
       const token = signJwt({ userId: String(user._id) });
       
       // Set cookie with minimal working configuration
-      const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
+      const cookieName = process.env.COOKIE_NAME || 'quotient_cookie_creations';
+      const cookieValue = `${cookieName}=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
       res.setHeader('Set-Cookie', cookieValue);
-      console.log("Cookie set:", cookieValue.substring(0, 100) + "...");
+      console.log("Cookie name:", cookieName);
+      console.log("Cookie set:", cookieValue);
+      console.log("Response headers after cookie:", res.getHeaders());
       
       console.log("Login successful for:", email);
       
@@ -126,9 +129,13 @@ module.exports = async function handler(req, res) {
   // GET /api/auth/me
   if (req.url === '/api/auth/me' && req.method === 'GET') {
     console.log("=== DIRECT /ME ===");
+    console.log("Raw cookie header:", req.headers.cookie);
+    console.log("All headers:", Object.keys(req.headers));
+    
     try {
       const token = getAuthToken(req);
       console.log("Token found:", !!token);
+      console.log("Cookie name being looked for:", process.env.COOKIE_NAME || 'quotient_cookie_creations');
       
       if (!token) {
         return res.status(401).json({ ok: false, error: "Please log in" });
