@@ -18,6 +18,31 @@ module.exports = async function handler(req, res) {
     });
   }
   
+  // Direct ping endpoint to bypass Express
+  if (req.url === '/api/auth/ping') {
+    console.log("=== DIRECT PING CALLED ===");
+    return res.json({ 
+      ok: true, 
+      message: "Direct routing works!",
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // Direct debug endpoint
+  if (req.url === '/api/auth/debug') {
+    console.log("=== DIRECT DEBUG CALLED ===");
+    return res.json({ 
+      ok: true, 
+      message: "Direct debug works!",
+      env: {
+        COOKIE_NAME: process.env.COOKIE_NAME || "NOT_SET",
+        JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT_SET",
+        JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "NOT_SET"
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   // Debug endpoint to test Express loading
   if (req.url === '/api/auth/debug-express') {
     console.log("=== DEBUG EXPRESS LOADING ===");
