@@ -199,9 +199,11 @@ module.exports = async function handler(req, res) {
       
       // Set cookie using Node.js native approach for Vercel
       try {
-        const cookieValue = `${process.env.COOKIE_NAME || 'quotient_auth_token'}=${token}; HttpOnly; Secure; SameSite=lax; Path=/; Max-Age=${7 * 24 * 60 * 60 * 1000}`;
+        const maxAgeSeconds = 7 * 24 * 60 * 60; // 7 days in seconds
+        const cookieValue = `${process.env.COOKIE_NAME || 'quotient_auth_token'}=${token}; HttpOnly; Secure; SameSite=lax; Path=/; Max-Age=${maxAgeSeconds}`;
         res.setHeader('Set-Cookie', cookieValue);
         console.log("Cookie set successfully via Set-Cookie header");
+        console.log("Cookie value:", cookieValue.substring(0, 100) + "...");
       } catch (cookieError) {
         console.error("Cookie setting error:", cookieError);
         return res.status(500).json({
