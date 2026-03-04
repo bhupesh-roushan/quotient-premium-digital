@@ -9,8 +9,24 @@ const { signJwt, verifyJwt } = require("../dist/lib/auth");
 const User = require("../dist/models/User");
 
 module.exports = async function handler(req, res) {
+  // Add CORS headers to all responses
+  res.setHeader('Access-Control-Allow-Origin', [
+    "https://quotient-premium-digital.vercel.app",
+    "http://quotient-premium-digital.vercel.app",
+    "http://localhost:3000",
+    "https://localhost:3000"
+  ]);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
   // Add cache busting header
   res.setHeader('x-cache-bust', Date.now());
+  
+  // Handle OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   
   // Direct test endpoint
   if (req.url === '/api/auth/direct-test') {
@@ -51,40 +67,76 @@ module.exports = async function handler(req, res) {
   if (req.url === '/api/auth/login' && req.method === 'POST') {
     console.log("=== DIRECT LOGIN CALLED ===");
     try {
-      const { email, password } = req.body || {};
+      console.log("Request headers:", req.headers);
+      console.log("Request body raw:", req.body);
+      
+      // Parse request body if it's not already parsed
+      let body = req.body;
+      if (!body && req.headers['content-type']?.includes('application/json')) {
+        try {
+          // Simple JSON parsing for Vercel environment
+          const chunks = [];
+          await new Promise((resolve, reject) => {
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', () => resolve(Buffer.concat(chunks).toString()));
+            req.on('error', reject);
+          });
+          body = JSON.parse(chunks.join(''));
+        } catch (parseError) {
+          console.error("JSON parse error:", parseError);
+          return res.status(400).json({
+            ok: false,
+            error: "Invalid JSON in request body"
+          });
+        }
+      }
+      
+      const { email, password } = body || {};
+      
+      console.log("Parsed email:", email);
+      console.log("Password provided:", !!password);
       
       if (!email || !password) {
         return res.status(400).json({
           ok: false,
-          error: "email , password needed"
+          error: "email and password are required"
         });
       }
       
       // Connect to DB if needed
       if (!cachedConnection) {
+        console.log("Connecting to database...");
         const { connectMongo } = require("../dist/db");
         await connectMongo();
         cachedConnection = true;
+        console.log("Database connected");
       }
       
       // Find user
+      console.log("Looking for user:", email.toLowerCase());
       const user = await User.findOne({ email: String(email).toLowerCase() });
       if (!user) {
+        console.log("User not found");
         return res.status(400).json({
           ok: false,
           error: "Invalid credentials"
         });
       }
+      
+      console.log("User found, verifying password...");
       
       // Verify password (using bcrypt from compiled auth)
       const bcrypt = require('bcryptjs');
       const okPassword = await bcrypt.compare(String(password), user.passwordHash);
       if (!okPassword) {
+        console.log("Password verification failed");
         return res.status(400).json({
           ok: false,
           error: "Invalid credentials"
         });
       }
+      
+      console.log("Password verified, creating token...");
       
       // Create token
       const token = signJwt({ userId: String(user._id) });
@@ -117,9 +169,11 @@ module.exports = async function handler(req, res) {
       
     } catch (error) {
       console.error("Direct login error:", error);
+      console.error("Error stack:", error.stack);
       return res.status(500).json({
         ok: false,
-        error: "Internal server error"
+        error: "Internal server error",
+        details: error.message
       });
     }
   }
