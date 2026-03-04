@@ -165,6 +165,19 @@ authRouter.post("/logout", async (req, res) => {
 });
 
 /**
+ * GET /api/auth/ping
+ * Simple ping test for Express routing
+ */
+authRouter.get("/ping", async (req, res) => {
+  console.log("=== PING ENDPOINT CALLED ===");
+  return res.json({ 
+    ok: true, 
+    message: "Express routing works!",
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
  * GET /api/auth/debug
  * Debug endpoint to verify deployment and environment
  */
