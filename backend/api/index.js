@@ -75,21 +75,14 @@ module.exports = async function handler(req, res) {
 
     console.log("Passing request to Express app...");
     
-    // Fix: Use the Express app properly as a handler
-    return new Promise((resolve, reject) => {
-      cachedApp(req, res, (err) => {
-        if (err) {
-          console.error("Express app error:", err);
-          return res.status(500).json({ error: "Express app error" });
-        }
-        
-        // If Express doesn't handle the route, return 404
-        if (!res.headersSent) {
-          console.log("No route handled, returning 404");
-          return res.status(404).json({ error: "Route not found" });
-        }
-      });
-    });
+    // Fix: Directly call the Express app without Promise wrapper
+    try {
+      cachedApp(req, res);
+      return;
+    } catch (expressError) {
+      console.error("Express app direct call error:", expressError);
+      return res.status(500).json({ error: "Express app error" });
+    }
     
   } catch (error) {
     console.error("API Error:", error.message, error.stack);
