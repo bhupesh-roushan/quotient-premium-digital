@@ -6,16 +6,17 @@ let cachedConnection = false;
 
 // Import auth functions directly
 const { signJwt, verifyJwt } = require("../dist/lib/auth");
-const User = require("../dist/models/User");
+const { User } = require("../dist/models/User");
 
 module.exports = async function handler(req, res) {
-  // Add CORS headers to all responses
-  res.setHeader('Access-Control-Allow-Origin', [
-    "https://quotient-premium-digital.vercel.app",
-    "http://quotient-premium-digital.vercel.app",
-    "http://localhost:3000",
-    "https://localhost:3000"
-  ]);
+  // Add CORS headers to all responses (single origin)
+  const origin = req.headers.origin;
+  if (origin === "https://quotient-premium-digital.vercel.app" || 
+      origin === "http://quotient-premium-digital.vercel.app" ||
+      origin === "http://localhost:3000" ||
+      origin === "https://localhost:3000") {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
