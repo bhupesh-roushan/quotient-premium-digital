@@ -29,6 +29,14 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
   
+  // Simple test to confirm direct handler is working
+  if (req.url === '/api/auth/test-direct') {
+    return res.json({ 
+      message: "Direct handler is working!",
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   // Direct test endpoint
   if (req.url === '/api/auth/direct-test') {
     console.log("=== DIRECT TEST CALLED ===");
