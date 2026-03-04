@@ -9,6 +9,11 @@ const { signJwt, verifyJwt } = require("../dist/lib/auth");
 const { User } = require("../dist/models/User");
 
 module.exports = async function handler(req, res) {
+  console.log("=== HANDLER CALLED ===");
+  console.log("URL:", req.url);
+  console.log("Method:", req.method);
+  console.log("Headers:", Object.keys(req.headers));
+  
   // Add CORS headers to all responses (single origin)
   const origin = req.headers.origin;
   if (origin === "https://quotient-premium-digital.vercel.app" || 
@@ -26,6 +31,7 @@ module.exports = async function handler(req, res) {
   
   // Handle OPTIONS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("=== OPTIONS REQUEST ===");
     return res.status(200).end();
   }
   
