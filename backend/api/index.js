@@ -1,10 +1,13 @@
 require("dotenv/config");
 
-// API Handler for Vercel deployment - v5 (Cookie Domain Fixed) - 2025-03-02-00:18
+// API Handler for Vercel deployment - v6 (Cache Busted) - 2025-03-05-01:53
 let cachedApp = null;
 let cachedConnection = false;
 
 module.exports = async function handler(req, res) {
+  // Add cache busting header
+  res.setHeader('x-cache-bust', Date.now());
+  
   try {
     // Try to require the compiled modules
     const { createApp } = require("../dist/app");
