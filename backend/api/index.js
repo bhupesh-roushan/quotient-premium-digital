@@ -242,7 +242,7 @@ module.exports = async function handler(req, res) {
     console.log("=== DIRECT /ME CALLED ===");
     try {
       // Get token from cookies
-      let token = req.cookies?.[process.env.COOKIE_NAME || 'quotient_auth_token'];
+      let token = req.cookies?.[process.env.COOKIE_NAME || 'quotient_cookie_creations'];
       
       if (!token && req.headers.cookie) {
         const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
@@ -250,9 +250,12 @@ module.exports = async function handler(req, res) {
           acc[key] = value;
           return acc;
         }, {});
-        token = cookies[process.env.COOKIE_NAME || 'quotient_auth_token'];
+        token = cookies[process.env.COOKIE_NAME || 'quotient_cookie_creations'];
       }
       
+      console.log("Cookie name being looked for:", process.env.COOKIE_NAME || 'quotient_cookie_creations');
+      console.log("Request cookies:", req.cookies);
+      console.log("Cookie header:", req.headers.cookie);
       console.log("Token found:", !!token);
       
       if (!token) {
