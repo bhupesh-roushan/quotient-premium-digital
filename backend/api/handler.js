@@ -100,13 +100,24 @@ module.exports = async function handler(req, res) {
       
       const token = signJwt({ userId: String(user._id) });
       
-      // Set cookie with minimal working configuration
+      // Set cookie with Vercel-compatible format
       const cookieName = process.env.COOKIE_NAME || 'quotient_cookie_creations';
-      const cookieValue = `${cookieName}=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}`;
-      res.setHeader('Set-Cookie', cookieValue);
+      const cookieOptions = {
+        httpOnly: true,
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        sameSite: 'None',
+        secure: true
+      };
+      
+      // Set cookie using multiple methods to ensure it works
+      res.cookie(cookieName, token, cookieOptions);
+      res.setHeader('Set-Cookie', `${cookieName}=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=None; Secure`);
+      
       console.log("Cookie name:", cookieName);
-      console.log("Cookie set:", cookieValue);
-      console.log("Response headers after cookie:", res.getHeaders());
+      console.log("Cookie token length:", token.length);
+      console.log("Cookie set via res.cookie");
+      console.log("Cookie set via Set-Cookie header");
       
       console.log("Login successful for:", email);
       
