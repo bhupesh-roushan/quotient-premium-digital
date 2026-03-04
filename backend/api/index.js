@@ -18,20 +18,62 @@ module.exports = async function handler(req, res) {
     });
   }
   
+  // Debug endpoint to test Express loading
+  if (req.url === '/api/auth/debug-express') {
+    console.log("=== DEBUG EXPRESS LOADING ===");
+    try {
+      console.log("1. Requiring app.js...");
+      const { createApp } = require("../dist/app");
+      console.log("2. App required successfully");
+      
+      console.log("3. Requiring db.js...");
+      const { connectMongo } = require("../dist/db");
+      console.log("4. DB required successfully");
+      
+      console.log("5. Creating Express app...");
+      const app = createApp();
+      console.log("6. Express app created successfully");
+      
+      return res.json({ 
+        ok: true, 
+        message: "Express app loading works!",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Express loading error:", error);
+      return res.status(500).json({ 
+        ok: false, 
+        error: "Express loading failed",
+        details: error.message
+      });
+    }
+  }
+  
   try {
+    console.log("=== HANDLER START ===");
+    console.log("Request URL:", req.url);
+    console.log("Request method:", req.method);
+    
     // Try to require the compiled modules
+    console.log("Loading app.js...");
     const { createApp } = require("../dist/app");
+    console.log("Loading db.js...");
     const { connectMongo } = require("../dist/db");
     
     if (!cachedConnection) {
+      console.log("Connecting to MongoDB...");
       await connectMongo();
       cachedConnection = true;
+      console.log("MongoDB connected");
     }
 
     if (!cachedApp) {
+      console.log("Creating Express app...");
       cachedApp = createApp();
+      console.log("Express app created");
     }
 
+    console.log("Passing request to Express app...");
     return cachedApp(req, res);
   } catch (error) {
     console.error("API Error:", error.message, error.stack);
