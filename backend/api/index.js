@@ -1,8 +1,12 @@
 require("dotenv/config");
 
-// API Handler for Vercel deployment - v7 (Direct Test)
+// API Handler for Vercel deployment - v8 (Direct Implementation)
 let cachedApp = null;
 let cachedConnection = false;
+
+// Import auth functions directly
+const { signJwt, verifyJwt } = require("../dist/lib/auth");
+const User = require("../dist/models/User");
 
 module.exports = async function handler(req, res) {
   // Add cache busting header
@@ -41,6 +45,150 @@ module.exports = async function handler(req, res) {
       },
       timestamp: new Date().toISOString()
     });
+  }
+  
+  // Direct login implementation
+  if (req.url === '/api/auth/login' && req.method === 'POST') {
+    console.log("=== DIRECT LOGIN CALLED ===");
+    try {
+      const { email, password } = req.body || {};
+      
+      if (!email || !password) {
+        return res.status(400).json({
+          ok: false,
+          error: "email , password needed"
+        });
+      }
+      
+      // Connect to DB if needed
+      if (!cachedConnection) {
+        const { connectMongo } = require("../dist/db");
+        await connectMongo();
+        cachedConnection = true;
+      }
+      
+      // Find user
+      const user = await User.findOne({ email: String(email).toLowerCase() });
+      if (!user) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid credentials"
+        });
+      }
+      
+      // Verify password (using bcrypt from compiled auth)
+      const bcrypt = require('bcryptjs');
+      const okPassword = await bcrypt.compare(String(password), user.passwordHash);
+      if (!okPassword) {
+        return res.status(400).json({
+          ok: false,
+          error: "Invalid credentials"
+        });
+      }
+      
+      // Create token
+      const token = signJwt({ userId: String(user._id) });
+      
+      console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
+      console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
+      
+      // Set cookie
+      res.cookie(process.env.COOKIE_NAME!, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: true,
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+      
+      console.log("Cookie set successfully");
+      console.log("=== END DIRECT LOGIN ===");
+      
+      return res.json({
+        ok: true,
+        user: {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          photo: user.photo,
+          isCreator: user.isCreator,
+        },
+      });
+      
+    } catch (error) {
+      console.error("Direct login error:", error);
+      return res.status(500).json({
+        ok: false,
+        error: "Internal server error"
+      });
+    }
+  }
+  
+  // Direct /me endpoint
+  if (req.url === '/api/auth/me' && req.method === 'GET') {
+    console.log("=== DIRECT /ME CALLED ===");
+    try {
+      // Get token from cookies
+      let token = req.cookies?.[process.env.COOKIE_NAME!];
+      
+      if (!token && req.headers.cookie) {
+        const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=');
+          acc[key] = value;
+          return acc;
+        }, {});
+        token = cookies[process.env.COOKIE_NAME!];
+      }
+      
+      console.log("Token found:", !!token);
+      
+      if (!token) {
+        return res.status(401).json({
+          ok: false,
+          error: "Unauth user! Please log in."
+        });
+      }
+      
+      // Verify token
+      const payload = verifyJwt(token);
+      
+      // Connect to DB if needed
+      if (!cachedConnection) {
+        const { connectMongo } = require("../dist/db");
+        await connectMongo();
+        cachedConnection = true;
+      }
+      
+      // Find user
+      const user = await User.findById(payload.userId).lean();
+      if (!user) {
+        return res.status(401).json({
+          ok: false,
+          error: "Invalid session"
+        });
+      }
+      
+      console.log("User authenticated successfully");
+      console.log("=== END DIRECT /ME ===");
+      
+      return res.json({ 
+        ok: true, 
+        user: {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          photo: user.photo,
+          isCreator: user.isCreator,
+        }
+      });
+      
+    } catch (error) {
+      console.error("Direct /me error:", error);
+      return res.status(401).json({
+        ok: false,
+        error: "Invalid session"
+      });
+    }
   }
   
   // Debug endpoint to test Express loading
