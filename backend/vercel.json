@@ -2,14 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/handler.js",
+      "src": "api/index.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/handler.js"
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.js"
     }
   ],
   "installCommand": "npm install",
