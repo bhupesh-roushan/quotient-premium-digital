@@ -93,7 +93,7 @@ module.exports = async function handler(req, res) {
       console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
       
       // Set cookie
-      res.cookie(process.env.COOKIE_NAME!, token, {
+      res.cookie(process.env.COOKIE_NAME || 'quotient_auth_token', token, {
         httpOnly: true,
         sameSite: "lax",
         secure: true,
@@ -129,7 +129,7 @@ module.exports = async function handler(req, res) {
     console.log("=== DIRECT /ME CALLED ===");
     try {
       // Get token from cookies
-      let token = req.cookies?.[process.env.COOKIE_NAME!];
+      let token = req.cookies?.[process.env.COOKIE_NAME || 'quotient_auth_token'];
       
       if (!token && req.headers.cookie) {
         const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
@@ -137,7 +137,7 @@ module.exports = async function handler(req, res) {
           acc[key] = value;
           return acc;
         }, {});
-        token = cookies[process.env.COOKIE_NAME!];
+        token = cookies[process.env.COOKIE_NAME || 'quotient_auth_token'];
       }
       
       console.log("Token found:", !!token);
