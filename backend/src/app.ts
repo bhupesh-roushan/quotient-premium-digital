@@ -45,8 +45,19 @@ export function createApp() {
 
   app.use(cookieParser());
 
+  // Debug middleware to log all requests
+  app.use((req, res, next) => {
+    console.log("=== EXPRESS REQUEST ===");
+    console.log("Method:", req.method);
+    console.log("URL:", req.url);
+    console.log("Path:", req.path);
+    console.log("Query:", req.query);
+    next();
+  });
+
   // ── Route registrations ──────────────────────────────────────────────────
 
+  console.log("Registering auth routes at /api/auth");
   app.use("/api/auth", authRouter);         // register / login / logout / me
 
   app.use("/api/user", userRouter);
