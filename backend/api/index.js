@@ -1,12 +1,22 @@
 require("dotenv/config");
 
-// API Handler for Vercel deployment - v6 (Cache Busted) - 2025-03-05-01:53
+// API Handler for Vercel deployment - v7 (Direct Test)
 let cachedApp = null;
 let cachedConnection = false;
 
 module.exports = async function handler(req, res) {
   // Add cache busting header
   res.setHeader('x-cache-bust', Date.now());
+  
+  // Direct test endpoint
+  if (req.url === '/api/auth/direct-test') {
+    console.log("=== DIRECT TEST CALLED ===");
+    return res.json({ 
+      ok: true, 
+      message: "Direct API handler test works!",
+      timestamp: new Date().toISOString()
+    });
+  }
   
   try {
     // Try to require the compiled modules

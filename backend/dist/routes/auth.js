@@ -101,7 +101,6 @@ exports.authRouter.post("/login", async (req, res) => {
             sameSite: "lax",
             secure: true,
             path: "/",
-            domain: "quotient-premium-digital.vercel.app",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
         console.log("Cookie set successfully");
@@ -136,7 +135,6 @@ exports.authRouter.post("/logout", async (req, res) => {
             httpOnly: true,
             sameSite: "lax",
             secure: true,
-            domain: "quotient-premium-digital.vercel.app",
         });
         console.log("Cookie cleared, sending response");
         return res.json({ ok: true, message: "Logged out successfully" });
@@ -145,6 +143,36 @@ exports.authRouter.post("/logout", async (req, res) => {
         console.log("Logout error:", err);
         res.status(500).json({ ok: false, error: "Logout failed" });
     }
+});
+/**
+ * GET /api/auth/debug
+ * Debug endpoint to verify deployment and environment
+ */
+exports.authRouter.get("/debug", async (req, res) => {
+    console.log("=== DEBUG ENDPOINT CALLED ===");
+    return res.json({
+        ok: true,
+        message: "New deployment is working!",
+        env: {
+            COOKIE_NAME: process.env.COOKIE_NAME || "NOT_SET",
+            JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT_SET",
+            JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "NOT_SET"
+        },
+        timestamp: new Date().toISOString(),
+        headers: req.headers
+    });
+});
+/**
+ * GET /api/auth/test
+ * Simple test endpoint to verify backend is working
+ */
+exports.authRouter.get("/test", async (req, res) => {
+    console.log("=== TEST ENDPOINT CALLED ===");
+    return res.json({
+        ok: true,
+        message: "Backend is working!",
+        timestamp: new Date().toISOString()
+    });
 });
 /**
  * GET /api/auth/me  [protected]
