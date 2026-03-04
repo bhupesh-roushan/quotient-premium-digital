@@ -34,6 +34,16 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
   
+  // Simple test endpoint to verify handler is working
+  if (req.url === '/api/test') {
+    console.log("=== TEST ENDPOINT CALLED ===");
+    return res.json({ 
+      message: "Handler is working!",
+      timestamp: new Date().toISOString(),
+      headers: req.headers
+    });
+  }
+  
   // Helper function to parse cookies
   function parseCookies(cookieHeader) {
     if (!cookieHeader) return {};
