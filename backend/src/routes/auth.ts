@@ -165,6 +165,25 @@ authRouter.post("/logout", async (req, res) => {
 });
 
 /**
+ * GET /api/auth/debug
+ * Debug endpoint to verify deployment and environment
+ */
+authRouter.get("/debug", async (req, res) => {
+  console.log("=== DEBUG ENDPOINT CALLED ===");
+  return res.json({ 
+    ok: true, 
+    message: "New deployment is working!",
+    env: {
+      COOKIE_NAME: process.env.COOKIE_NAME || "NOT_SET",
+      JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT_SET",
+      JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "NOT_SET"
+    },
+    timestamp: new Date().toISOString(),
+    headers: req.headers
+  });
+});
+
+/**
  * GET /api/auth/test
  * Simple test endpoint to verify backend is working
  */
