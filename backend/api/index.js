@@ -1,6 +1,6 @@
 require("dotenv/config");
 
-// API Handler for Vercel deployment - v9 (Final Fix - 2025-03-05-02:33)
+// API Handler for Vercel deployment - v10 (Complete Auth System)
 let cachedApp = null;
 let cachedConnection = false;
 
@@ -29,199 +29,70 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
   
-  // Simple test to confirm direct handler is working
-  if (req.url === '/api/auth/test-direct') {
-    return res.json({ 
-      message: "Direct handler is working!",
-      timestamp: new Date().toISOString()
-    });
+  // Helper function to parse cookies
+  function parseCookies(cookieHeader) {
+    if (!cookieHeader) return {};
+    return cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
   }
   
-  // Direct test endpoint
-  if (req.url === '/api/auth/direct-test') {
-    console.log("=== DIRECT TEST CALLED ===");
-    return res.json({ 
-      ok: true, 
-      message: "Direct API handler test works!",
-      timestamp: new Date().toISOString()
-    });
+  // Helper function to get auth token
+  function getAuthToken(req) {
+    const cookies = parseCookies(req.headers.cookie);
+    const cookieName = process.env.COOKIE_NAME || 'quotient_cookie_creations';
+    return cookies[cookieName];
   }
   
-  // Direct ping endpoint to bypass Express
-  if (req.url === '/api/auth/ping') {
-    console.log("=== DIRECT PING CALLED ===");
-    return res.json({ 
-      ok: true, 
-      message: "Direct routing works!",
-      timestamp: new Date().toISOString()
-    });
-  }
+  // AUTH ROUTES - Complete bypass of Express
   
-  // Direct debug endpoint
-  if (req.url === '/api/auth/debug') {
-    console.log("=== DIRECT DEBUG CALLED ===");
-    return res.json({ 
-      ok: true, 
-      message: "Direct debug works!",
-      env: {
-        COOKIE_NAME: process.env.COOKIE_NAME || "NOT_SET",
-        JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT_SET",
-        JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "NOT_SET"
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
-  
-  // Direct login implementation
+  // POST /api/auth/login
   if (req.url === '/api/auth/login' && req.method === 'POST') {
-    console.log("=== DIRECT LOGIN CALLED ===");
+    console.log("=== DIRECT LOGIN ===");
     try {
-      console.log("Request headers:", req.headers);
-      console.log("Request method:", req.method);
-      console.log("Request URL:", req.url);
-      
-      // Parse request body if it's not already parsed
       let body = req.body;
-      console.log("Initial req.body:", req.body);
-      
       if (!body && req.headers['content-type']?.includes('application/json')) {
-        console.log("Parsing JSON body...");
-        try {
-          // Simple JSON parsing for Vercel environment
-          const chunks = [];
-          const bodyString = await new Promise((resolve, reject) => {
-            req.on('data', chunk => chunks.push(chunk));
-            req.on('end', () => resolve(Buffer.concat(chunks).toString()));
-            req.on('error', reject);
-          });
-          console.log("Raw body string:", bodyString);
-          body = JSON.parse(bodyString);
-          console.log("Parsed body:", body);
-        } catch (parseError) {
-          console.error("JSON parse error:", parseError);
-          return res.status(400).json({
-            ok: false,
-            error: "Invalid JSON in request body"
-          });
-        }
+        const chunks = [];
+        const bodyString = await new Promise((resolve, reject) => {
+          req.on('data', chunk => chunks.push(chunk));
+          req.on('end', () => resolve(Buffer.concat(chunks).toString()));
+          req.on('error', reject);
+        });
+        body = JSON.parse(bodyString);
       }
       
       const { email, password } = body || {};
-      console.log("Extracted email:", email);
-      console.log("Password provided:", !!password);
-      
       if (!email || !password) {
-        console.log("Missing email or password");
-        return res.status(400).json({
-          ok: false,
-          error: "email and password are required"
-        });
+        return res.status(400).json({ ok: false, error: "Email and password required" });
       }
       
-      // Connect to DB if needed
       if (!cachedConnection) {
-        console.log("Connecting to database...");
-        try {
-          const { connectMongo } = require("../dist/db");
-          await connectMongo();
-          cachedConnection = true;
-          console.log("Database connected successfully");
-        } catch (dbError) {
-          console.error("Database connection error:", dbError);
-          return res.status(500).json({
-            ok: false,
-            error: "Database connection failed",
-            details: dbError.message
-          });
-        }
+        const { connectMongo } = require("../dist/db");
+        await connectMongo();
+        cachedConnection = true;
       }
       
-      // Check User model
-      console.log("User model:", typeof User);
-      console.log("User methods:", Object.getOwnPropertyNames(User));
-      
-      // Find user
-      console.log("Looking for user:", email.toLowerCase());
-      let user;
-      try {
-        user = await User.findOne({ email: String(email).toLowerCase() });
-        console.log("User found:", !!user);
-      } catch (userError) {
-        console.error("User.findOne error:", userError);
-        return res.status(500).json({
-          ok: false,
-          error: "Database query failed",
-          details: userError.message
-        });
-      }
-      
+      const user = await User.findOne({ email: String(email).toLowerCase() });
       if (!user) {
-        console.log("User not found");
-        return res.status(400).json({
-          ok: false,
-          error: "Invalid credentials"
-        });
+        return res.status(400).json({ ok: false, error: "Invalid credentials" });
       }
       
-      console.log("User found, verifying password...");
-      
-      // Verify password (using bcrypt from compiled auth)
       const bcrypt = require('bcryptjs');
-      let okPassword;
-      try {
-        okPassword = await bcrypt.compare(String(password), user.passwordHash);
-        console.log("Password verification result:", okPassword);
-      } catch (bcryptError) {
-        console.error("Bcrypt error:", bcryptError);
-        return res.status(500).json({
-          ok: false,
-          error: "Password verification failed"
-        });
-      }
-      
+      const okPassword = await bcrypt.compare(String(password), user.passwordHash);
       if (!okPassword) {
-        console.log("Password verification failed");
-        return res.status(400).json({
-          ok: false,
-          error: "Invalid credentials"
-        });
+        return res.status(400).json({ ok: false, error: "Invalid credentials" });
       }
       
-      console.log("Password verified, creating token...");
+      const token = signJwt({ userId: String(user._id) });
       
-      // Create token
-      let token;
-      try {
-        token = signJwt({ userId: String(user._id) });
-        console.log("Token created successfully");
-      } catch (tokenError) {
-        console.error("Token creation error:", tokenError);
-        return res.status(500).json({
-          ok: false,
-          error: "Token creation failed"
-        });
-      }
+      // Set cookie
+      const maxAgeSeconds = 7 * 24 * 60 * 60;
+      const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=${token}; HttpOnly; Secure; SameSite=lax; Path=/; Domain=quotient-premium-digital.vercel.app; Max-Age=${maxAgeSeconds}`;
+      res.setHeader('Set-Cookie', cookieValue);
       
-      console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
-      console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
-      
-      // Set cookie using Node.js native approach for Vercel
-      try {
-        const maxAgeSeconds = 7 * 24 * 60 * 60; // 7 days in seconds
-        const cookieValue = `${process.env.COOKIE_NAME || 'quotient_auth_token'}=${token}; HttpOnly; Secure; SameSite=lax; Path=/; Domain=quotient-premium-digital.vercel.app; Max-Age=${maxAgeSeconds}`;
-        res.setHeader('Set-Cookie', cookieValue);
-        console.log("Cookie set successfully via Set-Cookie header");
-        console.log("Cookie name:", process.env.COOKIE_NAME);
-        console.log("Cookie value:", cookieValue.substring(0, 100) + "...");
-      } catch (cookieError) {
-        console.error("Cookie setting error:", cookieError);
-        return res.status(500).json({
-          ok: false,
-          error: "Cookie setting failed"
-        });
-      }
-      
-      console.log("=== END DIRECT LOGIN ===");
+      console.log("Login successful for:", email);
       
       return res.json({
         ok: true,
@@ -233,174 +104,83 @@ module.exports = async function handler(req, res) {
           isCreator: user.isCreator,
         },
       });
-      
     } catch (error) {
-      console.error("Direct login error:", error);
-      console.error("Error stack:", error.stack);
-      return res.status(500).json({
-        ok: false,
-        error: "Internal server error",
-        details: error.message
-      });
+      console.error("Login error:", error);
+      return res.status(500).json({ ok: false, error: "Internal server error" });
     }
   }
   
-  // Direct /me endpoint
+  // GET /api/auth/me
   if (req.url === '/api/auth/me' && req.method === 'GET') {
-    console.log("=== DIRECT /ME CALLED ===");
+    console.log("=== DIRECT /ME ===");
     try {
-      // Parse cookies from header (Vercel doesn't parse automatically)
-      let token = null;
-      const cookieHeader = req.headers.cookie;
-      console.log("Raw cookie header:", cookieHeader);
-      
-      if (cookieHeader) {
-        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-          const [key, value] = cookie.trim().split('=');
-          acc[key] = value;
-          return acc;
-        }, {});
-        
-        console.log("Parsed cookies:", cookies);
-        console.log("Looking for cookie:", process.env.COOKIE_NAME || 'quotient_cookie_creations');
-        
-        token = cookies[process.env.COOKIE_NAME || 'quotient_cookie_creations'];
-      }
-      
+      const token = getAuthToken(req);
       console.log("Token found:", !!token);
-      console.log("Token preview:", token ? token.substring(0, 50) + "..." : "none");
       
       if (!token) {
-        return res.status(401).json({
-          ok: false,
-          error: "Unauth user! Please log in."
-        });
+        return res.status(401).json({ ok: false, error: "Please log in" });
       }
       
-      // Verify token
       const payload = verifyJwt(token);
-      console.log("Token verified, userId:", payload.userId);
       
-      // Connect to DB if needed
       if (!cachedConnection) {
         const { connectMongo } = require("../dist/db");
         await connectMongo();
         cachedConnection = true;
       }
       
-      // Find user
       const user = await User.findById(payload.userId).lean();
       if (!user) {
-        return res.status(401).json({
-          ok: false,
-          error: "Invalid session"
-        });
+        return res.status(401).json({ ok: false, error: "Invalid session" });
       }
       
-      console.log("User authenticated successfully");
-      console.log("=== END DIRECT /ME ===");
+      console.log("Auth successful for:", user.email);
       
-      return res.json({ 
-        ok: true, 
+      return res.json({
+        ok: true,
         user: {
           id: String(user._id),
           name: user.name,
           email: user.email,
           photo: user.photo,
           isCreator: user.isCreator,
-        }
+        },
       });
-      
     } catch (error) {
-      console.error("Direct /me error:", error);
-      return res.status(401).json({
-        ok: false,
-        error: "Invalid session"
-      });
+      console.error("/me error:", error);
+      return res.status(401).json({ ok: false, error: "Invalid session" });
     }
   }
   
-  // Debug endpoint to test Express loading
-  if (req.url === '/api/auth/debug-express') {
-    console.log("=== DEBUG EXPRESS LOADING ===");
-    try {
-      console.log("1. Requiring app.js...");
-      const { createApp } = require("../dist/app");
-      console.log("2. App required successfully");
-      
-      console.log("3. Requiring db.js...");
-      const { connectMongo } = require("../dist/db");
-      console.log("4. DB required successfully");
-      
-      console.log("5. Creating Express app...");
-      const app = createApp();
-      console.log("6. Express app created successfully");
-      
-      return res.json({ 
-        ok: true, 
-        message: "Express app loading works!",
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Express loading error:", error);
-      return res.status(500).json({ 
-        ok: false, 
-        error: "Express loading failed",
-        details: error.message
-      });
-    }
+  // POST /api/auth/logout
+  if (req.url === '/api/auth/logout' && req.method === 'POST') {
+    console.log("=== DIRECT LOGOUT ===");
+    const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=; HttpOnly; Secure; SameSite=lax; Path=/; Domain=quotient-premium-digital.vercel.app; Max-Age=0`;
+    res.setHeader('Set-Cookie', cookieValue);
+    return res.json({ ok: true, message: "Logged out successfully" });
   }
   
+  // If no auth route matched, try Express app (for other routes)
   try {
-    console.log("=== HANDLER START ===");
+    console.log("=== PASSING TO EXPRESS ===");
     console.log("Request URL:", req.url);
     console.log("Request method:", req.method);
     
-    // Try to require the compiled modules
-    console.log("Loading app.js...");
     const { createApp } = require("../dist/app");
-    console.log("Loading db.js...");
     const { connectMongo } = require("../dist/db");
     
     if (!cachedConnection) {
-      console.log("Connecting to MongoDB...");
       await connectMongo();
       cachedConnection = true;
-      console.log("MongoDB connected");
     }
 
     if (!cachedApp) {
-      console.log("Creating Express app...");
       cachedApp = createApp();
-      console.log("Express app created");
     }
 
-    console.log("Passing request to Express app...");
-    
-    // Fix: Directly call the Express app without Promise wrapper
-    try {
-      cachedApp(req, res);
-      return;
-    } catch (expressError) {
-      console.error("Express app direct call error:", expressError);
-      return res.status(500).json({ error: "Express app error" });
-    }
-    
+    return cachedApp(req, res);
   } catch (error) {
-    console.error("API Error:", error.message, error.stack);
-    
-    // If module not found, provide helpful error
-    if (error.message.includes('Cannot find module')) {
-      return res.status(500).json({ 
-        error: "Build Error", 
-        message: "TypeScript compilation failed. The dist folder was not created.",
-        details: "Please check that the build step ran successfully in Vercel."
-      });
-    }
-    
-    return res.status(500).json({ 
-      error: "Internal Server Error", 
-      message: error.message 
-    });
+    console.error("Express error:", error);
+    return res.status(500).json({ error: "Server error" });
   }
 };
