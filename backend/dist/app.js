@@ -42,7 +42,17 @@ function createApp() {
     }));
     app.use(express_1.default.json({}));
     app.use((0, cookie_parser_1.default)());
+    // Debug middleware to log all requests
+    app.use((req, res, next) => {
+        console.log("=== EXPRESS REQUEST ===");
+        console.log("Method:", req.method);
+        console.log("URL:", req.url);
+        console.log("Path:", req.path);
+        console.log("Query:", req.query);
+        next();
+    });
     // ── Route registrations ──────────────────────────────────────────────────
+    console.log("Registering auth routes at /api/auth");
     app.use("/api/auth", auth_1.authRouter); // register / login / logout / me
     app.use("/api/user", user_1.default);
     app.use("/api/subscriptions", subscription_1.subscriptionRouter);

@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
       
       // Set cookie
       const maxAgeSeconds = 7 * 24 * 60 * 60;
-      const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=${token}; HttpOnly; Secure; SameSite=lax; Path=/; Domain=quotient-premium-digital.vercel.app; Max-Age=${maxAgeSeconds}`;
+      const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=${token}; HttpOnly; Secure; SameSite=lax; Path=/; Max-Age=${maxAgeSeconds}`;
       res.setHeader('Set-Cookie', cookieValue);
       
       console.log("Login successful for:", email);
@@ -155,7 +155,7 @@ module.exports = async function handler(req, res) {
   // POST /api/auth/logout
   if (req.url === '/api/auth/logout' && req.method === 'POST') {
     console.log("=== DIRECT LOGOUT ===");
-    const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=; HttpOnly; Secure; SameSite=lax; Path=/; Domain=quotient-premium-digital.vercel.app; Max-Age=0`;
+    const cookieValue = `${process.env.COOKIE_NAME || 'quotient_cookie_creations'}=; HttpOnly; Secure; SameSite=lax; Path=/; Max-Age=0`;
     res.setHeader('Set-Cookie', cookieValue);
     return res.json({ ok: true, message: "Logged out successfully" });
   }
