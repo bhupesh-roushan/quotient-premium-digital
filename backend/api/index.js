@@ -249,22 +249,26 @@ module.exports = async function handler(req, res) {
   if (req.url === '/api/auth/me' && req.method === 'GET') {
     console.log("=== DIRECT /ME CALLED ===");
     try {
-      // Get token from cookies
-      let token = req.cookies?.[process.env.COOKIE_NAME || 'quotient_cookie_creations'];
+      // Parse cookies from header (Vercel doesn't parse automatically)
+      let token = null;
+      const cookieHeader = req.headers.cookie;
+      console.log("Raw cookie header:", cookieHeader);
       
-      if (!token && req.headers.cookie) {
-        const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+      if (cookieHeader) {
+        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
           const [key, value] = cookie.trim().split('=');
           acc[key] = value;
           return acc;
         }, {});
+        
+        console.log("Parsed cookies:", cookies);
+        console.log("Looking for cookie:", process.env.COOKIE_NAME || 'quotient_cookie_creations');
+        
         token = cookies[process.env.COOKIE_NAME || 'quotient_cookie_creations'];
       }
       
-      console.log("Cookie name being looked for:", process.env.COOKIE_NAME || 'quotient_cookie_creations');
-      console.log("Request cookies:", req.cookies);
-      console.log("Cookie header:", req.headers.cookie);
       console.log("Token found:", !!token);
+      console.log("Token preview:", token ? token.substring(0, 50) + "..." : "none");
       
       if (!token) {
         return res.status(401).json({
@@ -275,6 +279,7 @@ module.exports = async function handler(req, res) {
       
       // Verify token
       const payload = verifyJwt(token);
+      console.log("Token verified, userId:", payload.userId);
       
       // Connect to DB if needed
       if (!cachedConnection) {
