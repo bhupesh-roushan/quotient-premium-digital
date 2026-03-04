@@ -69,20 +69,26 @@ module.exports = async function handler(req, res) {
     console.log("=== DIRECT LOGIN CALLED ===");
     try {
       console.log("Request headers:", req.headers);
-      console.log("Request body raw:", req.body);
+      console.log("Request method:", req.method);
+      console.log("Request URL:", req.url);
       
       // Parse request body if it's not already parsed
       let body = req.body;
+      console.log("Initial req.body:", req.body);
+      
       if (!body && req.headers['content-type']?.includes('application/json')) {
+        console.log("Parsing JSON body...");
         try {
           // Simple JSON parsing for Vercel environment
           const chunks = [];
-          await new Promise((resolve, reject) => {
+          const bodyString = await new Promise((resolve, reject) => {
             req.on('data', chunk => chunks.push(chunk));
             req.on('end', () => resolve(Buffer.concat(chunks).toString()));
             req.on('error', reject);
           });
-          body = JSON.parse(chunks.join(''));
+          console.log("Raw body string:", bodyString);
+          body = JSON.parse(bodyString);
+          console.log("Parsed body:", body);
         } catch (parseError) {
           console.error("JSON parse error:", parseError);
           return res.status(400).json({
@@ -93,11 +99,11 @@ module.exports = async function handler(req, res) {
       }
       
       const { email, password } = body || {};
-      
-      console.log("Parsed email:", email);
+      console.log("Extracted email:", email);
       console.log("Password provided:", !!password);
       
       if (!email || !password) {
+        console.log("Missing email or password");
         return res.status(400).json({
           ok: false,
           error: "email and password are required"
@@ -107,15 +113,40 @@ module.exports = async function handler(req, res) {
       // Connect to DB if needed
       if (!cachedConnection) {
         console.log("Connecting to database...");
-        const { connectMongo } = require("../dist/db");
-        await connectMongo();
-        cachedConnection = true;
-        console.log("Database connected");
+        try {
+          const { connectMongo } = require("../dist/db");
+          await connectMongo();
+          cachedConnection = true;
+          console.log("Database connected successfully");
+        } catch (dbError) {
+          console.error("Database connection error:", dbError);
+          return res.status(500).json({
+            ok: false,
+            error: "Database connection failed",
+            details: dbError.message
+          });
+        }
       }
+      
+      // Check User model
+      console.log("User model:", typeof User);
+      console.log("User methods:", Object.getOwnPropertyNames(User));
       
       // Find user
       console.log("Looking for user:", email.toLowerCase());
-      const user = await User.findOne({ email: String(email).toLowerCase() });
+      let user;
+      try {
+        user = await User.findOne({ email: String(email).toLowerCase() });
+        console.log("User found:", !!user);
+      } catch (userError) {
+        console.error("User.findOne error:", userError);
+        return res.status(500).json({
+          ok: false,
+          error: "Database query failed",
+          details: userError.message
+        });
+      }
+      
       if (!user) {
         console.log("User not found");
         return res.status(400).json({
@@ -128,7 +159,18 @@ module.exports = async function handler(req, res) {
       
       // Verify password (using bcrypt from compiled auth)
       const bcrypt = require('bcryptjs');
-      const okPassword = await bcrypt.compare(String(password), user.passwordHash);
+      let okPassword;
+      try {
+        okPassword = await bcrypt.compare(String(password), user.passwordHash);
+        console.log("Password verification result:", okPassword);
+      } catch (bcryptError) {
+        console.error("Bcrypt error:", bcryptError);
+        return res.status(500).json({
+          ok: false,
+          error: "Password verification failed"
+        });
+      }
+      
       if (!okPassword) {
         console.log("Password verification failed");
         return res.status(400).json({
@@ -140,21 +182,39 @@ module.exports = async function handler(req, res) {
       console.log("Password verified, creating token...");
       
       // Create token
-      const token = signJwt({ userId: String(user._id) });
+      let token;
+      try {
+        token = signJwt({ userId: String(user._id) });
+        console.log("Token created successfully");
+      } catch (tokenError) {
+        console.error("Token creation error:", tokenError);
+        return res.status(500).json({
+          ok: false,
+          error: "Token creation failed"
+        });
+      }
       
       console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
       console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
       
       // Set cookie
-      res.cookie(process.env.COOKIE_NAME || 'quotient_auth_token', token, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: true,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      try {
+        res.cookie(process.env.COOKIE_NAME || 'quotient_auth_token', token, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: true,
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+        console.log("Cookie set successfully");
+      } catch (cookieError) {
+        console.error("Cookie setting error:", cookieError);
+        return res.status(500).json({
+          ok: false,
+          error: "Cookie setting failed"
+        });
+      }
       
-      console.log("Cookie set successfully");
       console.log("=== END DIRECT LOGIN ===");
       
       return res.json({
