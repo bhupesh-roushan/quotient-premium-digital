@@ -2,31 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/auth.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/handler.js", 
+      "src": "api/handler.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/api/auth/login",
-      "dest": "/api/auth.js"
-    },
-    {
-      "src": "/api/auth/register",
-      "dest": "/api/auth.js"
-    },
-    {
-      "src": "/api/auth/me",
-      "dest": "/api/auth.js"
-    },
-    {
-      "src": "/api/auth/logout",
-      "dest": "/api/auth.js"
-    },
     {
       "src": "/api/(.*)",
       "dest": "/api/handler.js"

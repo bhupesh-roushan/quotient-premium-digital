@@ -34,12 +34,30 @@ function parseCookies(cookieHeader) {
 }
 
 /**
- * Get authentication token from request
+ * Get authentication token from request with multiple fallbacks
  */
 function getAuthToken(req) {
+  // Method 1: Try cookies first
   const cookies = parseCookies(req.headers.cookie);
   const cookieName = process.env.COOKIE_NAME || 'quotient_cookie_creations';
-  return cookies[cookieName];
+  let token = cookies[cookieName];
+  
+  // Method 2: Try Authorization header
+  if (!token && req.headers.authorization) {
+    const authHeader = req.headers.authorization;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
+  
+  // Method 3: Try URL parameter (fallback)
+  if (!token && req.url && req.url.includes('token=')) {
+    const urlObj = new URL(req.url, `https://${req.headers.host}`);
+    token = urlObj.searchParams.get('token');
+  }
+  
+  console.log(`🔍 Token search: cookie=${!!cookies[cookieName]}, header=${!!req.headers.authorization}, url=${req.url?.includes('token=')}`);
+  return token;
 }
 
 /**
@@ -241,6 +259,7 @@ module.exports = async function handler(req, res) {
       
       return res.json({
         ok: true,
+        token: token, // Include token as fallback
         user: {
           id: String(user._id),
           name: user.name,
