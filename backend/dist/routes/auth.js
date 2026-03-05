@@ -96,13 +96,18 @@ exports.authRouter.post("/login", async (req, res) => {
         const token = (0, auth_1.signJwt)({ userId: String(user._id) });
         console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
         console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
-        res.cookie(process.env.COOKIE_NAME, token, {
+        const cookieOptions = {
             httpOnly: true,
             sameSite: "lax",
-            secure: true,
             path: "/",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+        };
+        // Set secure and domain only for production
+        if (process.env.NODE_ENV === 'production') {
+            cookieOptions.secure = true;
+            cookieOptions.domain = ".vercel.app";
+        }
+        res.cookie(process.env.COOKIE_NAME, token, cookieOptions);
         console.log("Cookie set successfully");
         console.log("=== END LOGIN DEBUG ===");
         return res.json({
@@ -131,11 +136,17 @@ exports.authRouter.post("/login", async (req, res) => {
 exports.authRouter.post("/logout", async (req, res) => {
     try {
         console.log("Logout request received");
-        res.clearCookie(process.env.COOKIE_NAME, {
+        const cookieOptions = {
             httpOnly: true,
             sameSite: "lax",
-            secure: true,
-        });
+            path: "/",
+        };
+        // Set secure and domain only for production
+        if (process.env.NODE_ENV === 'production') {
+            cookieOptions.secure = true;
+            cookieOptions.domain = ".vercel.app";
+        }
+        res.clearCookie(process.env.COOKIE_NAME, cookieOptions);
         console.log("Cookie cleared, sending response");
         return res.json({ ok: true, message: "Logged out successfully" });
     }
@@ -143,48 +154,6 @@ exports.authRouter.post("/logout", async (req, res) => {
         console.log("Logout error:", err);
         res.status(500).json({ ok: false, error: "Logout failed" });
     }
-});
-/**
- * GET /api/auth/ping
- * Simple ping test for Express routing
- */
-exports.authRouter.get("/ping", async (req, res) => {
-    console.log("=== PING ENDPOINT CALLED ===");
-    return res.json({
-        ok: true,
-        message: "Express routing works!",
-        timestamp: new Date().toISOString()
-    });
-});
-/**
- * GET /api/auth/debug
- * Debug endpoint to verify deployment and environment
- */
-exports.authRouter.get("/debug", async (req, res) => {
-    console.log("=== DEBUG ENDPOINT CALLED ===");
-    return res.json({
-        ok: true,
-        message: "New deployment is working!",
-        env: {
-            COOKIE_NAME: process.env.COOKIE_NAME || "NOT_SET",
-            JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT_SET",
-            JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "NOT_SET"
-        },
-        timestamp: new Date().toISOString(),
-        headers: req.headers
-    });
-});
-/**
- * GET /api/auth/test
- * Simple test endpoint to verify backend is working
- */
-exports.authRouter.get("/test", async (req, res) => {
-    console.log("=== TEST ENDPOINT CALLED ===");
-    return res.json({
-        ok: true,
-        message: "Backend is working!",
-        timestamp: new Date().toISOString()
-    });
 });
 /**
  * GET /api/auth/me  [protected]

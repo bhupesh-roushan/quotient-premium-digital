@@ -113,14 +113,20 @@ authRouter.post("/login", async (req, res) => {
     console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
     console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
 
-    res.cookie(process.env.COOKIE_NAME!, token, {
+    const cookieOptions: any = {
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
       path: "/",
-      domain: ".vercel.app",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    };
+    
+    // Set secure and domain only for production
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.secure = true;
+      cookieOptions.domain = ".vercel.app";
+    }
+
+    res.cookie(process.env.COOKIE_NAME!, token, cookieOptions);
 
     console.log("Cookie set successfully");
     console.log("=== END LOGIN DEBUG ===");
@@ -151,12 +157,20 @@ authRouter.post("/login", async (req, res) => {
 authRouter.post("/logout", async (req, res) => {
   try {
     console.log("Logout request received");
-    res.clearCookie(process.env.COOKIE_NAME!, {
+    
+    const cookieOptions: any = {
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
-      domain: ".vercel.app",
-    });
+      path: "/",
+    };
+    
+    // Set secure and domain only for production
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.secure = true;
+      cookieOptions.domain = ".vercel.app";
+    }
+    
+    res.clearCookie(process.env.COOKIE_NAME!, cookieOptions);
     
     console.log("Cookie cleared, sending response");
     return res.json({ ok: true, message: "Logged out successfully" });
