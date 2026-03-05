@@ -103,12 +103,12 @@ exports.authRouter.post("/login", async (req, res) => {
             path: "/",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         };
-        // Production: secure + sameSite none + domain for cross-subdomain
+        // Production: secure + sameSite none for cross-subdomain
         // Check both NODE_ENV and VERCEL_ENV
         if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
             cookieOptions.secure = true;
             cookieOptions.sameSite = 'none';
-            cookieOptions.domain = '.vercel.app';
+            // Don't set domain - let browser handle it
             console.log("Using PRODUCTION cookie settings");
         }
         else {
@@ -149,11 +149,11 @@ exports.authRouter.post("/logout", async (req, res) => {
             httpOnly: true,
             path: "/",
         };
-        // Production: secure + sameSite none + domain for cross-subdomain
+        // Production: secure + sameSite none for cross-subdomain
         if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
             cookieOptions.secure = true;
             cookieOptions.sameSite = 'none';
-            cookieOptions.domain = '.vercel.app';
+            // Don't set domain - let browser handle it
         }
         else {
             cookieOptions.sameSite = 'lax';
