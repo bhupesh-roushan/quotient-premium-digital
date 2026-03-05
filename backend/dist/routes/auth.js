@@ -96,6 +96,7 @@ exports.authRouter.post("/login", async (req, res) => {
         const token = (0, auth_1.signJwt)({ userId: String(user._id) });
         console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
         console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
+        console.log("Environment check - NODE_ENV:", process.env.NODE_ENV);
         const cookieOptions = {
             httpOnly: true,
             path: "/",
@@ -106,10 +107,13 @@ exports.authRouter.post("/login", async (req, res) => {
             cookieOptions.secure = true;
             cookieOptions.sameSite = 'none';
             cookieOptions.domain = '.vercel.app';
+            console.log("Using PRODUCTION cookie settings");
         }
         else {
             cookieOptions.sameSite = 'lax';
+            console.log("Using DEVELOPMENT cookie settings");
         }
+        console.log("Final cookie options:", cookieOptions);
         res.cookie(process.env.COOKIE_NAME, token, cookieOptions);
         console.log("Cookie set successfully");
         console.log("=== END LOGIN DEBUG ===");

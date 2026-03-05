@@ -112,6 +112,7 @@ authRouter.post("/login", async (req, res) => {
 
     console.log("Setting cookie - Name:", process.env.COOKIE_NAME);
     console.log("Setting cookie - Token:", token.substring(0, 50) + "...");
+    console.log("Environment check - NODE_ENV:", process.env.NODE_ENV);
 
     const cookieOptions: any = {
       httpOnly: true,
@@ -124,9 +125,13 @@ authRouter.post("/login", async (req, res) => {
       cookieOptions.secure = true;
       cookieOptions.sameSite = 'none';
       cookieOptions.domain = '.vercel.app';
+      console.log("Using PRODUCTION cookie settings");
     } else {
       cookieOptions.sameSite = 'lax';
+      console.log("Using DEVELOPMENT cookie settings");
     }
+    
+    console.log("Final cookie options:", cookieOptions);
 
     res.cookie(process.env.COOKIE_NAME!, token, cookieOptions);
 
