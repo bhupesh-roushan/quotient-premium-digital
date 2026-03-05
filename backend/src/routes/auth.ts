@@ -119,12 +119,12 @@ authRouter.post("/login", async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     };
     
-    // Production: secure + sameSite none for cross-subdomain
+    // Production: secure + sameSite none + domain for cross-subdomain
     if (process.env.NODE_ENV === 'production') {
       cookieOptions.secure = true;
       cookieOptions.sameSite = 'none';
+      cookieOptions.domain = '.vercel.app';
     } else {
-      // Development: lax is fine for localhost
       cookieOptions.sameSite = 'lax';
     }
 
@@ -165,12 +165,12 @@ authRouter.post("/logout", async (req, res) => {
       path: "/",
     };
     
-    // Production: secure + sameSite none for cross-subdomain
+    // Production: secure + sameSite none + domain for cross-subdomain
     if (process.env.NODE_ENV === 'production') {
       cookieOptions.secure = true;
       cookieOptions.sameSite = 'none';
+      cookieOptions.domain = '.vercel.app';
     } else {
-      // Development: lax is fine for localhost
       cookieOptions.sameSite = 'lax';
     }
     
