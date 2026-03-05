@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
-import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Quotient",
@@ -17,11 +16,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="h-full top-0 bg-black text-white antialiased">
-        {/* razorpay script loading */}
-        <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="beforeInteractive"
-        />
         {children}
         <Toaster />
       </body>

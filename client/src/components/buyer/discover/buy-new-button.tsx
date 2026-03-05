@@ -21,21 +21,26 @@ type CreateSessionRes = {
 
 type ConfirmRes = { ok: boolean; error?: string };
 
-function waitForRazorpay(timeout = 3000): Promise<void> {
+function loadRazorpayScript(): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Check if already loaded
     if (window.Razorpay) return resolve();
 
-    const t0 = Date.now();
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve());
+      existingScript.addEventListener('error', () => reject(new Error('Razorpay script failed to load')));
+      return;
+    }
 
-    const t = setInterval(() => {
-      if (window.Razorpay) {
-        clearInterval(t);
-        resolve();
-      } else if (Date.now() - t0 > timeout) {
-        clearInterval(t);
-        reject(new Error("Razorpay not loaded"));
-      }
-    }, 25);
+    // Load the script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Razorpay script failed to load'));
+    document.body.appendChild(script);
   });
 }
 
@@ -49,17 +54,19 @@ function BuyNewButton({ productId }: { productId: string }) {
     setLoading(true);
 
     try {
+      // Load Razorpay script first
+      await loadRazorpayScript();
+
       const { data: res } = await apiClient.post<CreateSessionRes>(
         "/api/checkout/create-session",
         { productId },
       );
 
       if (!res.ok || !res.razorpay || !res.order) {
-        alert("Failed to start checjout");
+        alert("Failed to start checkout");
         return;
       }
 
-      await waitForRazorpay();
       if (!window.Razorpay) throw new Error("Razorpay not loaded");
 
       const options: RazorpayOptions = {
@@ -91,6 +98,7 @@ function BuyNewButton({ productId }: { productId: string }) {
       razorpayInstance.open();
     } catch (e) {
       console.log(e);
+      alert("Failed to load payment gateway. Please try again.");
     } finally {
       setLoading(false);
     }
