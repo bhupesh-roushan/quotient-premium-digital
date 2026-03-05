@@ -31,12 +31,18 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: [
-        "https://quotient-premium-digital.vercel.app",
-        "http://quotient-premium-digital.vercel.app",
-        "http://localhost:3000",
-        "https://localhost:3000"
-      ],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        // Allow localhost
+        if (origin.includes('localhost')) return callback(null, true);
+        
+        // Allow any vercel.app subdomain
+        if (origin.includes('vercel.app')) return callback(null, true);
+        
+        callback(new Error('Not allowed by CORS'));
+      },
       credentials: true,
     })
   );
