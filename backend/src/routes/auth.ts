@@ -121,12 +121,11 @@ authRouter.post("/login", async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     };
     
-    // Production: secure + sameSite none for cross-subdomain
+    // Production: secure cookies
     // Check both NODE_ENV and VERCEL_ENV
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
       cookieOptions.secure = true;
-      cookieOptions.sameSite = 'none';
-      // Don't set domain - let browser handle it
+      cookieOptions.sameSite = 'lax'; // Changed to lax since requests are now same-origin via proxy
       console.log("Using PRODUCTION cookie settings");
     } else {
       cookieOptions.sameSite = 'lax';
@@ -172,11 +171,10 @@ authRouter.post("/logout", async (req, res) => {
       path: "/",
     };
     
-    // Production: secure + sameSite none for cross-subdomain
+    // Production: secure cookies
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
       cookieOptions.secure = true;
-      cookieOptions.sameSite = 'none';
-      // Don't set domain - let browser handle it
+      cookieOptions.sameSite = 'lax'; // Changed to lax since requests are now same-origin via proxy
     } else {
       cookieOptions.sameSite = 'lax';
     }

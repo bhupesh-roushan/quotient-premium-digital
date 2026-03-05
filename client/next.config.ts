@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://quotient-premium-digital-d6qd.vercel.app/api/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
