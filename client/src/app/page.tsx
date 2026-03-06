@@ -151,7 +151,7 @@ export default async function Home() {
               <div className="text-center md:text-left flex flex-col items-center md:items-start">
                 <img 
                   src="/logowhite.svg" 
-                  alt="Quotient" 
+                  alt="Cloudwatch" 
                   className="h-8 w-auto mb-2"
                 />
                 <p className="text-neutral-400 text-sm">
@@ -216,7 +216,7 @@ export default async function Home() {
 
             <div className="mt-6 pt-4 border-t border-neutral-800/30 text-center">
               <p className="text-neutral-500 text-xs">
-                © {currentYear} Quotient. All rights reserved.
+                © {currentYear} Cloudwatch. All rights reserved.
               </p>
             </div>
           </div>

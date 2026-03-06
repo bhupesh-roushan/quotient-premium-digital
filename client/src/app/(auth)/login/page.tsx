@@ -13,11 +13,11 @@ export default async function LoginPage() {
         <div className="flex items-center justify-between gap-2">
           <h1 className="hidden sm:block text-3xl">
             <Link href={"/"} className="font-semibold tracking-tight">
-              {/* <img src="./logofull.svg" alt="Quotient Logo" /> */}
+              
             </Link>
           </h1>
         </div>
-        {/* <h2 className="text-2xl text-center font-semibold tracking-tight">Sign In</h2> */}
+     
       </header>
       <div className="p-8 sm:p-16">
         <div className="max-w-md">

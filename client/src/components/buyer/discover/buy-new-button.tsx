@@ -73,7 +73,7 @@ function BuyNewButton({ productId }: { productId: string }) {
         key: res.razorpay.keyId,
         amount: res.razorpay.amount,
         currency: res.razorpay.currency,
-        name: "Quotient",
+        name: "Cloudwatch",
         description: res.order.title,
         order_id: res.razorpay.orderId,
         handler: async (resp) => {
