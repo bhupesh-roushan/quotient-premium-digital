@@ -107,7 +107,6 @@
 | **Mongoose** | ODM for MongoDB |
 | **JWT** | Authentication |
 | **Bcrypt** | Password hashing |
-| **Zod** | Schema validation |
 | **Socket.io** | Real-time communication |
 
 ### AI & External Services
@@ -118,7 +117,7 @@
 | **SerpAPI** | Search engine data extraction |
 | **Razorpay** | Payment processing |
 | **Cloudinary** | Image and file storage |
-| **Nodemailer** | Email notifications |
+| **StackBlitz** | Live code preview and sandbox |
 
 ### DevOps & Deployment
 | Tool | Purpose |
@@ -167,6 +166,7 @@ CloudWatch supports diverse digital product types with structured metadata:
 - TypeScript utilities
 - CSS templates
 - HTML layouts
+- **Live StackBlitz previews** for instant code testing
 
 ---
 
@@ -367,7 +367,6 @@ Response with Cookie
 │  │  │  • CORS Handler                                          │ │  │
 │  │  │  • Cookie Parser                                         │ │  │
 │  │  │  • JWT Authentication                                    │ │  │
-│  │  │  • Request Validation (Zod)                              │ │  │
 │  │  │  • Error Handler                                         │ │  │
 │  │  └──────────────────────────────────────────────────────────┘ │  │
 │  │                                                                 │  │
@@ -715,33 +714,45 @@ Response with Cookie
 }
 ```
 
-#### 6. API Rate Limiting & Caching Strategy
+#### 6. StackBlitz Integration for Code Products
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Request Pipeline                        │
+│              Code Product Workflow                       │
 └─────────────────────────────────────────────────────────┘
                         │
                         ▼
             ┌───────────────────────┐
-            │   Rate Limiter        │
-            │   (Express Middleware)│
-            │   • 100 req/min/IP    │
-            │   • 1000 req/hour/IP  │
+            │  Creator Uploads      │
+            │  Code Component       │
+            │  (React/Vue/etc)      │
             └───────────┬───────────┘
                         │
                         ▼
             ┌───────────────────────┐
-            │   Cache Layer         │
-            │   (In-Memory)         │
-            │   • Product List: 5m  │
-            │   • User Profile: 10m │
+            │  Store in MongoDB     │
+            │  (codeFiles array)    │
             └───────────┬───────────┘
                         │
                         ▼
             ┌───────────────────────┐
-            │   Database Query      │
-            │   (MongoDB)           │
+            │  Buyer Views Product  │
+            │  Clicks "Run Code"    │
+            └───────────┬───────────┘
+                        │
+                        ▼
+            ┌───────────────────────┐
+            │  Generate StackBlitz  │
+            │  Embed URL            │
+            │  (Live Preview)       │
+            └───────────┬───────────┘
+                        │
+                        ▼
+            ┌───────────────────────┐
+            │  Interactive Sandbox  │
+            │  • Edit Code          │
+            │  • See Live Changes   │
+            │  • Download Project   │
             └───────────────────────┘
 ```
 
@@ -797,12 +808,6 @@ CLOUDINARY_API_SECRET=your_api_secret
 GEMINI_API_KEY=your_gemini_api_key
 FIRECRAWL_API_KEY=your_firecrawl_key
 SERPAPI_API_KEY=your_serpapi_key
-
-# Email
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
 
 # Environment
 NODE_ENV=production
@@ -968,10 +973,8 @@ vercel --prod
 - ✅ **JWT Authentication** with httpOnly cookies
 - ✅ **Password Hashing** with Bcrypt (10 rounds)
 - ✅ **CORS Protection** with whitelist
-- ✅ **Input Validation** with Zod schemas
 - ✅ **SQL Injection Prevention** (NoSQL with Mongoose)
 - ✅ **XSS Protection** with sanitization
-- ✅ **Rate Limiting** on sensitive endpoints
 - ✅ **HTTPS Only** in production
 - ✅ **Environment Variables** for secrets
 - ✅ **Role-Based Access Control** (RBAC)
