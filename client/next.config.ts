@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://cloudwatch.in/api/:path*',
+        destination: 'https://cloudwatch-digital.vercel.app/api/:path*',
       },
     ];
   },
