@@ -3,7 +3,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "CloudWatch",
+  title: "Cloudwatch",
   
   description: "AI-Powered Digital Creator Marketplace",
 };
