@@ -39,6 +39,9 @@ function createApp() {
             // Allow localhost
             if (origin.includes('localhost'))
                 return callback(null, true);
+            // Allow custom domain
+            if (origin.includes('cloudwatch.in'))
+                return callback(null, true);
             // Allow any vercel.app subdomain
             if (origin.includes('vercel.app'))
                 return callback(null, true);
