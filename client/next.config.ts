@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://quotient-premium-digital-d6qd.vercel.app/api/:path*',
+        destination: 'https://cloudwatch-digital.vercel.app/api/:path*',
       },
     ];
   },
